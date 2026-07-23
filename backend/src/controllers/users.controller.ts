@@ -37,7 +37,7 @@ export async function createUser(req: Request, res: Response) {
     throw new HttpError(400, "username, password, and displayName are required");
   }
 
-  const existing = await prisma.user.findUnique({ where: { username } });
+  const existing = await prisma.user.findFirst({ where: { username: { equals: username, mode: "insensitive" } } });
   if (existing) {
     throw new HttpError(409, "Username already taken");
   }

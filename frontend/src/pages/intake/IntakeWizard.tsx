@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { BarcodeFormat } from "@zxing/library";
 import { BarcodeScanner } from "@/components/scanner/BarcodeScanner";
 import { PhotoCapture } from "@/components/camera/PhotoCapture";
+import { SkuScanner } from "@/components/ocr/SkuScanner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -230,6 +231,7 @@ export function IntakeWizard() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="sku">SKU</Label>
               <Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} />
+              <SkuScanner onExtracted={setSku} />
             </div>
             <div className="flex gap-2">
               <Button onClick={() => setStep("scan-location")} disabled={!name}>
