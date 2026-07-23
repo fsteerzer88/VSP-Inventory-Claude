@@ -6,8 +6,8 @@ dist/
 # Backend
 backend/data/
 
-# TLS certs (generated locally via mkcert, never committed)
-docker/reverse-proxy/certs/
+# SWAG's persistent config: Let's Encrypt certs/keys and the Cloudflare API token, never committed
+docker/swag/config/
 
 # Editor/OS
 .DS_Store

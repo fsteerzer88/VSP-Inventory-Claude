@@ -1,0 +1,15 @@
+# CI-only override: temporarily publishes backend/frontend ports so the smoke test can hit them
+# directly over plain HTTP, bypassing SWAG (which needs real Cloudflare credentials + a live
+# domain and is therefore not exercised in CI - see docker/swag/README.md for that flow).
+services:
+  backend:
+    ports:
+      - "4000:4000"
+    environment:
+      # The app hardcodes secure (HTTPS-only) session cookies in production. CI hits the
+      # backend directly over plain HTTP (no TLS - that's SWAG's job, not exercised here),
+      # so relax that just for this smoke test or the login cookie would never be sent back.
+      NODE_ENV: test
+  frontend:
+    ports:
+      - "8081:80"

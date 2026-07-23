@@ -27,8 +27,8 @@ services:
       PORT: 4000
       NODE_ENV: production
       IMAGES_DIR: /data/images
-      CORS_ORIGIN: https://${APP_HOSTNAME:-inventory.lan}
-      PUBLIC_BASE_URL: https://${APP_HOSTNAME:-inventory.lan}
+      CORS_ORIGIN: https://${APP_HOSTNAME:-inventory.indiconvision.com}
+      PUBLIC_BASE_URL: https://${APP_HOSTNAME:-inventory.indiconvision.com}
       SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-changeme}
     volumes:
@@ -39,18 +39,41 @@ services:
     networks:
       - app-network
 
-  reverse-proxy:
+  frontend:
     build:
       context: .
-      dockerfile: docker/reverse-proxy/Dockerfile
+      dockerfile: docker/frontend/Dockerfile
     restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  swag:
+    image: lscr.io/linuxserver/swag
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      TZ: ${TZ:-Etc/UTC}
+      URL: ${CLOUDFLARE_ROOT_DOMAIN:?CLOUDFLARE_ROOT_DOMAIN is required}
+      SUBDOMAINS: ${APP_SUBDOMAIN:-inventory}
+      ONLY_SUBDOMAINS: "true"
+      VALIDATION: dns
+      DNSPLUGIN: cloudflare
+      EMAIL: ${LETSENCRYPT_EMAIL:?LETSENCRYPT_EMAIL is required}
+      STAGING: ${LETSENCRYPT_STAGING:-false}
+    volumes:
+      - ./docker/swag/config:/config
+      - ./docker/swag/proxy-confs/vsp-inventory.subdomain.conf:/config/nginx/proxy-confs/vsp-inventory.subdomain.conf:ro
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
-    volumes:
-      - ./docker/reverse-proxy/certs:/etc/nginx/certs
     depends_on:
       - backend
+      - frontend
     networks:
       - app-network
 

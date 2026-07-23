@@ -59,9 +59,9 @@ jobs:
           - name: backend
             context: ./backend
             dockerfile: ./backend/Dockerfile
-          - name: reverse-proxy
+          - name: frontend
             context: .
-            dockerfile: ./docker/reverse-proxy/Dockerfile
+            dockerfile: ./docker/frontend/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -76,7 +76,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}
 
   compose-smoke-test:
-    name: docker compose smoke test
+    name: docker compose smoke test (postgres + backend + frontend)
     runs-on: ubuntu-latest
     needs: [docker-build]
     steps:
@@ -93,18 +93,21 @@ jobs:
           SEED_ADMIN_USERNAME=admin
           SEED_ADMIN_PASSWORD=ci-admin-password
           APP_HOSTNAME=localhost
+          CLOUDFLARE_ROOT_DOMAIN=example.com
+          APP_SUBDOMAIN=ci
+          LETSENCRYPT_EMAIL=ci@example.com
           HTTP_PORT=8080
           HTTPS_PORT=8443
           EOF
 
-      - name: Build and start stack
-        run: docker compose up -d --build
+      - name: Build and start postgres, backend, frontend (SWAG excluded - needs real Cloudflare creds)
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build postgres backend frontend
 
       - name: Wait for backend to become healthy
         run: |
           for i in $(seq 1 30); do
-            if curl -sk https://localhost:8443/api/auth/me -o /dev/null -w '%{http_code}' | grep -q '401'; then
-              echo "Backend is responding through the reverse proxy."
+            if curl -s http://localhost:4000/api/auth/me -o /dev/null -w '%{http_code}' | grep -q '401'; then
+              echo "Backend is responding."
               exit 0
             fi
             echo "Waiting for stack to come up... ($i/30)"
@@ -117,18 +120,22 @@ jobs:
       - name: Smoke test auth + core API
         run: |
           set -e
-          curl -sk -c cookies.txt -X POST https://localhost:8443/api/auth/login \
+          curl -s -c cookies.txt -X POST http://localhost:4000/api/auth/login \
             -H "Content-Type: application/json" \
             -d '{"username":"admin","password":"ci-admin-password"}' | tee login.json
           grep -q '"role":"admin"' login.json
 
-          curl -sk -b cookies.txt https://localhost:8443/api/auth/me | tee me.json
+          curl -s -b cookies.txt http://localhost:4000/api/auth/me | tee me.json
           grep -q '"username":"admin"' me.json
 
-          curl -sk -b cookies.txt -X POST https://localhost:8443/api/locations \
+          curl -s -b cookies.txt -X POST http://localhost:4000/api/locations \
             -H "Content-Type: application/json" \
             -d '{"name":"CI Shelf","code":"CI-1"}' | tee location.json
           grep -q '"code":"CI-1"' location.json
+
+      - name: Smoke test frontend is served
+        run: |
+          curl -s http://localhost:8081/ | grep -qi "<title>VSP Inventory Manager</title>"
 
       - name: Show logs on failure
         if: failure()
@@ -136,4 +143,4 @@ jobs:
 
       - name: Tear down
         if: always()
-        run: docker compose down -v
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
