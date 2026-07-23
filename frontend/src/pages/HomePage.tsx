@@ -1,87 +1,51 @@
-import { useEffect, useRef, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Camera } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useProducts } from "@/api/products";
+import { useLocations } from "@/api/locations";
+import { useInventory } from "@/api/inventory";
+import { useTransactions } from "@/api/transactions";
+import { Package, MapPin, Boxes, AlertTriangle, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 
-type CameraStatus = "idle" | "checking" | "ok" | "error";
-
-function CameraCheck() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [status, setStatus] = useState<CameraStatus>("idle");
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      const stream = videoRef.current?.srcObject as MediaStream | null;
-      stream?.getTracks().forEach((track) => track.stop());
-    };
-  }, []);
-
-  async function checkCamera() {
-    setStatus("checking");
-    setError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setStatus("ok");
-    } catch (err) {
-      setStatus("error");
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Camera className="h-5 w-5" />
-          Camera access check
-        </CardTitle>
-        <CardDescription>
-          Verifies this device can grant camera access over the current connection.
-          Barcode scanning and photo capture require a secure context (HTTPS or localhost).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {!window.isSecureContext && (
-          <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            <XCircle className="h-4 w-4 shrink-0" />
-            This page is not loaded in a secure context. Camera access will be blocked by the browser.
-            Load the app over HTTPS (see the LAN setup instructions).
-          </div>
-        )}
-        <Button onClick={checkCamera} disabled={status === "checking"} className="w-fit">
-          {status === "checking" ? "Requesting camera..." : "Test camera access"}
-        </Button>
-        {status === "ok" && (
-          <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-            <CheckCircle2 className="h-4 w-4" />
-            Camera access granted.
-          </div>
-        )}
-        {status === "error" && (
-          <div className="flex items-center gap-2 text-sm text-destructive">
-            <XCircle className="h-4 w-4" />
-            Camera access failed: {error}
-          </div>
-        )}
-        <video
-          ref={videoRef}
-          muted
-          playsInline
-          className="aspect-video w-full max-w-sm rounded-md border border-border bg-muted object-cover"
-        />
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  to,
+}: {
+  label: string;
+  value: number | string;
+  icon: typeof Package;
+  to?: string;
+}) {
+  const content = (
+    <Card className="h-full">
+      <CardContent className="flex items-center gap-3 p-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-2xl font-semibold tracking-tight">{value}</p>
+          <p className="text-sm text-muted-foreground">{label}</p>
+        </div>
       </CardContent>
     </Card>
   );
+  return to ? <Link to={to}>{content}</Link> : content;
 }
 
 export function HomePage() {
+  const { data: products } = useProducts();
+  const { data: locations } = useLocations();
+  const { data: inventory } = useInventory();
+  const { data: transactions } = useTransactions();
+
+  const totalUnits = inventory?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const lowStockCount =
+    inventory?.filter(
+      (item) => item.product?.reorderThreshold != null && item.quantity <= item.product.reorderThreshold,
+    ).length ?? 0;
+  const recentTransactions = transactions?.slice(0, 5) ?? [];
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -90,7 +54,41 @@ export function HomePage() {
           Scan products in for intake, check items out, and manage inventory locations.
         </p>
       </div>
-      <CameraCheck />
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard label="Products" value={products?.length ?? "-"} icon={Package} to="/products" />
+        <StatCard label="Locations" value={locations?.length ?? "-"} icon={MapPin} to="/locations" />
+        <StatCard label="Units in stock" value={totalUnits} icon={Boxes} to="/inventory" />
+        <StatCard label="Low stock" value={lowStockCount} icon={AlertTriangle} to="/inventory" />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent activity</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          {recentTransactions.length ? (
+            recentTransactions.map((tx) => (
+              <div key={tx.id} className="flex items-center gap-3 border-b border-border py-2 last:border-0">
+                {tx.quantityDelta >= 0 ? (
+                  <ArrowUpCircle className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
+                ) : (
+                  <ArrowDownCircle className="h-4 w-4 shrink-0 text-destructive" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm">
+                    <span className="font-medium capitalize">{tx.type}</span> {tx.product?.name} at{" "}
+                    {tx.location?.name} by {tx.performedByUser?.displayName ?? "unknown"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{new Date(tx.performedAt).toLocaleString()}</p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">No activity yet.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
