@@ -1,17 +1,14 @@
-# CI-only override: temporarily publishes backend/frontend ports so the smoke test can hit them
-# directly over plain HTTP, bypassing cloudflared (which needs a real Cloudflare tunnel token and
-# a live domain and is therefore not exercised in CI - see docker/cloudflared/README.md).
+# CI-only override: publishes backend's port too (frontend's port is already published by the
+# base compose file, driven by HTTP_PORT in the CI .env) so the smoke test can hit things
+# directly over plain HTTP, and relaxes the secure-cookie requirement since there's no reverse
+# proxy terminating HTTPS in front in CI.
 services:
   backend:
     ports:
       - "4000:4000"
     environment:
-      # The app hardcodes secure (HTTPS-only) session cookies in production, correctly relying
-      # on X-Forwarded-Proto from the frontend container's nginx (which always claims "https"
-      # since it's only ever reached via the tunnel - see docker/frontend/nginx.conf). CI hits
-      # things over plain HTTP with no tunnel in front at all, so relax that just for this
+      # The app hardcodes secure (HTTPS-only) session cookies in production, relying on
+      # X-Forwarded-Proto being forwarded correctly by whatever reverse proxy sits in front
+      # (see docker/frontend/nginx.conf). CI has no such proxy, so relax that just for this
       # smoke test or the login cookie would never be sent back.
       NODE_ENV: test
-  frontend:
-    ports:
-      - "8081:80"

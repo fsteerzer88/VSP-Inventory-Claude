@@ -93,10 +93,10 @@ jobs:
           SEED_ADMIN_USERNAME=admin
           SEED_ADMIN_PASSWORD=ci-admin-password
           APP_HOSTNAME=localhost
-          CLOUDFLARE_TUNNEL_TOKEN=ci-dummy-token-not-used
+          HTTP_PORT=8081
           EOF
 
-      - name: Build and start postgres, backend, frontend (cloudflared excluded - needs a real tunnel token)
+      - name: Build and start postgres, backend, frontend
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build postgres backend frontend
 
       - name: Wait for stack to become healthy (through the frontend's /api proxy, the real production path)

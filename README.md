@@ -10,9 +10,10 @@ management/search UI.
 - Frontend: React + TypeScript (Vite), Tailwind CSS, `@zxing/browser` for barcode/QR scanning
 - Backend: Node + Express + TypeScript, Prisma ORM
 - Database: PostgreSQL
-- Access: [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/)
-  (`cloudflared`), so the app is reachable at a real HTTPS hostname both on your LAN and remotely,
-  with no port forwarding (see below)
+- This stack does **not** terminate TLS itself — `frontend` serves plain HTTP on `HTTP_PORT`
+  and expects to sit behind your own reverse proxy (e.g. Nginx Proxy Manager, optionally paired
+  with your own Cloudflare Tunnel in front of that), which handles the public hostname and
+  certificate (see below)
 
 ## Running locally
 
@@ -21,17 +22,41 @@ cp .env.example .env   # fill in real secrets
 docker compose up -d --build
 ```
 
-Then browse to `https://<APP_HOSTNAME>` you configured (see the Cloudflare Tunnel setup below —
-the app isn't reachable at all until that's wired up, since `cloudflared` is the only ingress).
+The app listens on plain HTTP at `http://<host>:HTTP_PORT` (default `8080`). Point your reverse
+proxy's forward target there — see "Fronting with your own reverse proxy" below.
 
 ### Camera access (barcode scanning / photo capture)
 
-Browsers only allow camera access over HTTPS. Cloudflare's edge terminates TLS with a certificate
-every browser already trusts, so **no device needs any manual certificate setup** — camera access
-just works, the same as any other HTTPS site. See
-[`docker/cloudflared/README.md`](docker/cloudflared/README.md) for the one-time setup (you need a
-domain on a free Cloudflare account). That doc also covers locking the app down with Cloudflare
-Access, since a Tunnel makes the hostname reachable from the public internet by default.
+Browsers only allow camera access over HTTPS. Since this stack doesn't handle TLS itself, that
+means **your reverse proxy must terminate HTTPS with a certificate real browsers trust** (e.g. via
+Nginx Proxy Manager's own Let's Encrypt integration, or a Cloudflare Tunnel/Access setup in front
+of it) — see the section below for exactly what it needs to forward.
+
+## Fronting with your own reverse proxy (e.g. Nginx Proxy Manager)
+
+This app expects one thing from whatever sits in front of it: a plain-HTTP proxy pass to
+`<unraid-ip>:HTTP_PORT` (default `8080`), with **`X-Forwarded-Proto` set to `https`** on the
+forwarded request when the original client connection was HTTPS. `frontend`'s nginx passes that
+header straight through to the backend, which uses it to decide whether to issue the session
+cookie as `Secure` — if it's missing or wrong, logins will appear to silently fail (the login
+call succeeds, but the session cookie never sticks).
+
+In **Nginx Proxy Manager**, this is the default behavior for any Proxy Host with SSL enabled — no
+extra config needed:
+
+- Domain Names: `inventory.indiconvision.com` (or whatever `APP_HOSTNAME` you set in `.env`)
+- Scheme: `http`
+- Forward Hostname/IP: your Unraid box's LAN IP
+- Forward Port: `HTTP_PORT` from your `.env` (default `8080`)
+- SSL tab: request/attach a certificate and enable "Force SSL"
+
+If you're also routing through your own separate Cloudflare Tunnel in front of NPM (rather than
+NPM requesting its own Let's Encrypt cert), that's independent of this app — just make sure
+whatever reaches NPM is HTTPS, since NPM forwards that scheme information on for you.
+
+Set `APP_HOSTNAME` in `.env` to match whatever public hostname you configure there — the backend
+uses it to build `CORS_ORIGIN`/`PUBLIC_BASE_URL` (the latter is also embedded in generated
+location QR codes).
 
 ## Deploying on Unraid
 
@@ -50,31 +75,26 @@ Access, since a Tunnel makes the hostname reachable from the public internet by 
 
    ```sh
    cp .env.example .env
-   nano .env   # set POSTGRES_PASSWORD, SESSION_SECRET, SEED_ADMIN_PASSWORD
+   nano .env   # set POSTGRES_PASSWORD, SESSION_SECRET, SEED_ADMIN_PASSWORD, APP_HOSTNAME
    ```
 
-3. **Set up Cloudflare Tunnel** — see [`docker/cloudflared/README.md`](docker/cloudflared/README.md)
-   for the full one-time walkthrough (create the tunnel, point its public hostname at the
-   `frontend` container, set `CLOUDFLARE_TUNNEL_TOKEN` in `.env`, and — important — lock it down
-   with a Cloudflare Access policy). Nothing is reachable until this is done.
+   `HTTP_PORT` defaults to `8080` since Unraid's own webGUI usually owns 80/443.
 
-4. **Bring the stack up:**
+3. **Bring the stack up:**
 
    ```sh
    docker compose up -d --build
    ```
-
-   No host ports need to be published — `cloudflared` only makes outbound connections to
-   Cloudflare, so there's no port-forwarding to configure and no conflict with Unraid's own
-   webGUI on 80/443.
 
    If your Unraid version doesn't have the `docker compose` CLI, install the **Compose Manager**
    plugin (by dcflachs) from Community Applications — it gives you a GUI to add this stack (point
    it at the `docker-compose.yml` here), start/stop it, and have it auto-start with the array,
    right alongside your other Docker containers in the Unraid UI.
 
-5. **Browse to it**: `https://inventory.indiconvision.com` from any device — no per-device setup
-   required, works both on your LAN and remotely.
+4. **Point your reverse proxy at it** — see "Fronting with your own reverse proxy" above.
+
+5. **Browse to it**: `https://inventory.indiconvision.com` (or whatever `APP_HOSTNAME` you set)
+   from any device.
 
 6. **Updating later**: pull the latest code (`git pull`, or re-run the `curl | tar` command from
    step 1) and re-run `docker compose up -d --build`. Containers use `restart: unless-stopped`, so
@@ -95,5 +115,3 @@ Unraid's appdata-backup flows too, switch those two to bind mounts (e.g. `./data
 GitHub Actions (`.github/workflows/ci.yml`) typechecks/builds both apps, builds the backend and
 frontend Docker images, and runs a `docker compose` smoke test (backend health/auth checks, and
 the full request path through the frontend's nginx `/api` proxy) on every push/PR to `main`.
-`cloudflared` isn't part of CI since it needs a real Cloudflare tunnel token and domain — that's
-only exercised in an actual deployment.
