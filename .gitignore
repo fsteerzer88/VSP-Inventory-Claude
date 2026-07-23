@@ -6,9 +6,6 @@ dist/
 # Backend
 backend/data/
 
-# SWAG's persistent config: Let's Encrypt certs/keys and the Cloudflare API token, never committed
-docker/swag/config/
-
 # Editor/OS
 .DS_Store
 Thumbs.db

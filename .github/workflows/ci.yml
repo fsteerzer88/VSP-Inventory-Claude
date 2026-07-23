@@ -93,21 +93,17 @@ jobs:
           SEED_ADMIN_USERNAME=admin
           SEED_ADMIN_PASSWORD=ci-admin-password
           APP_HOSTNAME=localhost
-          CLOUDFLARE_ROOT_DOMAIN=example.com
-          APP_SUBDOMAIN=ci
-          LETSENCRYPT_EMAIL=ci@example.com
-          HTTP_PORT=8080
-          HTTPS_PORT=8443
+          CLOUDFLARE_TUNNEL_TOKEN=ci-dummy-token-not-used
           EOF
 
-      - name: Build and start postgres, backend, frontend (SWAG excluded - needs real Cloudflare creds)
+      - name: Build and start postgres, backend, frontend (cloudflared excluded - needs a real tunnel token)
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build postgres backend frontend
 
-      - name: Wait for backend to become healthy
+      - name: Wait for stack to become healthy (through the frontend's /api proxy, the real production path)
         run: |
           for i in $(seq 1 30); do
-            if curl -s http://localhost:4000/api/auth/me -o /dev/null -w '%{http_code}' | grep -q '401'; then
-              echo "Backend is responding."
+            if curl -s http://localhost:8081/api/auth/me -o /dev/null -w '%{http_code}' | grep -q '401'; then
+              echo "Stack is responding through the frontend proxy."
               exit 0
             fi
             echo "Waiting for stack to come up... ($i/30)"
@@ -117,18 +113,18 @@ jobs:
           docker compose logs
           exit 1
 
-      - name: Smoke test auth + core API
+      - name: Smoke test auth + core API through the frontend proxy
         run: |
           set -e
-          curl -s -c cookies.txt -X POST http://localhost:4000/api/auth/login \
+          curl -s -c cookies.txt -X POST http://localhost:8081/api/auth/login \
             -H "Content-Type: application/json" \
             -d '{"username":"admin","password":"ci-admin-password"}' | tee login.json
           grep -q '"role":"admin"' login.json
 
-          curl -s -b cookies.txt http://localhost:4000/api/auth/me | tee me.json
+          curl -s -b cookies.txt http://localhost:8081/api/auth/me | tee me.json
           grep -q '"username":"admin"' me.json
 
-          curl -s -b cookies.txt -X POST http://localhost:4000/api/locations \
+          curl -s -b cookies.txt -X POST http://localhost:8081/api/locations \
             -H "Content-Type: application/json" \
             -d '{"name":"CI Shelf","code":"CI-1"}' | tee location.json
           grep -q '"code":"CI-1"' location.json
