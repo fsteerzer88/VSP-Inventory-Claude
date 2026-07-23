@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-backend:
+    name: Typecheck & build backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm install
+      - name: Prisma generate
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      - run: npx tsc --noEmit
+      - run: npm run build
+
+  typecheck-frontend:
+    name: Typecheck & build frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm install
+      - run: npx tsc -b
+      - run: npm run build
+
+  docker-build:
+    name: Build ${{ matrix.image.name }} image
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - name: backend
+            context: ./backend
+            dockerfile: ./backend/Dockerfile
+          - name: reverse-proxy
+            context: .
+            dockerfile: ./docker/reverse-proxy/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.image.context }}
+          file: ${{ matrix.image.dockerfile }}
+          push: false
+          load: true
+          tags: vsp-${{ matrix.image.name }}:ci
+          cache-from: type=gha,scope=${{ matrix.image.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}
+
+  compose-smoke-test:
+    name: docker compose smoke test
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Write CI env file
+        run: |
+          cat <<EOF > .env
+          POSTGRES_USER=ci
+          POSTGRES_PASSWORD=ci-password
+          POSTGRES_DB=vsp_inventory
+          SESSION_SECRET=ci-session-secret-not-for-production
+          SEED_ADMIN_USERNAME=admin
+          SEED_ADMIN_PASSWORD=ci-admin-password
+          APP_HOSTNAME=localhost
+          HTTP_PORT=8080
+          HTTPS_PORT=8443
+          EOF
+
+      - name: Build and start stack
+        run: docker compose up -d --build
+
+      - name: Wait for backend to become healthy
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sk https://localhost:8443/api/auth/me -o /dev/null -w '%{http_code}' | grep -q '401'; then
+              echo "Backend is responding through the reverse proxy."
+              exit 0
+            fi
+            echo "Waiting for stack to come up... ($i/30)"
+            sleep 2
+          done
+          echo "Stack did not become healthy in time."
+          docker compose logs
+          exit 1
+
+      - name: Smoke test auth + core API
+        run: |
+          set -e
+          curl -sk -c cookies.txt -X POST https://localhost:8443/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"username":"admin","password":"ci-admin-password"}' | tee login.json
+          grep -q '"role":"admin"' login.json
+
+          curl -sk -b cookies.txt https://localhost:8443/api/auth/me | tee me.json
+          grep -q '"username":"admin"' me.json
+
+          curl -sk -b cookies.txt -X POST https://localhost:8443/api/locations \
+            -H "Content-Type: application/json" \
+            -d '{"name":"CI Shelf","code":"CI-1"}' | tee location.json
+          grep -q '"code":"CI-1"' location.json
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  admin
+  user
+}
+
+enum TransactionType {
+  intake
+  checkout
+  adjustment
+  move
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
+  role         Role     @default(user)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  createdProducts   Product[]       @relation("ProductCreatedBy")
+  createdLocations  Location[]      @relation("LocationCreatedBy")
+  uploadedImages    ProductImage[]  @relation("ImageUploadedBy")
+  transactions      Transaction[]   @relation("TransactionPerformedBy")
+
+  @@map("users")
+}
+
+model Location {
+  id               String   @id @default(uuid())
+  name             String
+  code             String   @unique
+  description      String?
+  parentLocationId String?  @map("parent_location_id")
+  parentLocation   Location?  @relation("LocationHierarchy", fields: [parentLocationId], references: [id])
+  childLocations   Location[] @relation("LocationHierarchy")
+  createdBy        String?  @map("created_by")
+  createdByUser    User?    @relation("LocationCreatedBy", fields: [createdBy], references: [id])
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  inventoryItems Inventory[]
+  transactions   Transaction[]
+
+  @@map("locations")
+}
+
+model Product {
+  id                String   @id @default(uuid())
+  barcode           String?  @unique
+  barcodeType       String?  @map("barcode_type")
+  name              String
+  description       String?
+  manufacturer      String?
+  category          String?
+  sku               String?
+  reorderThreshold  Int?     @map("reorder_threshold")
+  metadata          Json     @default("{}")
+  createdBy         String?  @map("created_by")
+  createdByUser     User?    @relation("ProductCreatedBy", fields: [createdBy], references: [id])
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  images         ProductImage[]
+  inventoryItems Inventory[]
+  transactions   Transaction[]
+
+  @@map("products")
+}
+
+model ProductImage {
+  id         String   @id @default(uuid())
+  productId  String   @map("product_id")
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  filePath   String   @map("file_path")
+  isPrimary  Boolean  @default(true) @map("is_primary")
+  uploadedBy String?  @map("uploaded_by")
+  uploadedByUser User? @relation("ImageUploadedBy", fields: [uploadedBy], references: [id])
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+
+  @@map("product_images")
+}
+
+model Inventory {
+  id         String   @id @default(uuid())
+  productId  String   @map("product_id")
+  product    Product  @relation(fields: [productId], references: [id])
+  locationId String   @map("location_id")
+  location   Location @relation(fields: [locationId], references: [id])
+  quantity   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  transactions Transaction[]
+
+  @@unique([productId, locationId])
+  @@map("inventory_items")
+}
+
+model Transaction {
+  id               String          @id @default(uuid())
+  type             TransactionType
+  inventoryItemId  String?         @map("inventory_item_id")
+  inventoryItem    Inventory?      @relation(fields: [inventoryItemId], references: [id])
+  productId        String          @map("product_id")
+  product          Product         @relation(fields: [productId], references: [id])
+  locationId       String          @map("location_id")
+  location         Location        @relation(fields: [locationId], references: [id])
+  quantityDelta    Int             @map("quantity_delta")
+  quantityAfter    Int             @map("quantity_after")
+  performedBy      String          @map("performed_by")
+  performedByUser  User            @relation("TransactionPerformedBy", fields: [performedBy], references: [id])
+  performedAt      DateTime        @default(now()) @map("performed_at")
+  notes            String?
+
+  @@map("transactions")
+}

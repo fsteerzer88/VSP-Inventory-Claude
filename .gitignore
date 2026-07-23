@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+*.local
+
+# Backend
+backend/data/
+
+# TLS certs (generated locally via mkcert, never committed)
+docker/reverse-proxy/certs/
+
+# Editor/OS
+.DS_Store
+Thumbs.db
