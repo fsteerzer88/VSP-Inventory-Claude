@@ -17,6 +17,7 @@ services:
       - app-network
 
   backend:
+    image: ghcr.io/fsteerzer88/vsp-inventory-backend:${IMAGE_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -40,6 +41,7 @@ services:
       - app-network
 
   frontend:
+    image: ghcr.io/fsteerzer88/vsp-inventory-frontend:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: docker/frontend/Dockerfile

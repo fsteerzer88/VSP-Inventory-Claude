@@ -80,11 +80,25 @@ location QR codes).
 
    `HTTP_PORT` defaults to `8080` since Unraid's own webGUI usually owns 80/443.
 
-3. **Bring the stack up:**
+3. **Pull the prebuilt images and bring the stack up:**
 
    ```sh
-   docker compose up -d --build
+   docker compose pull
+   docker compose up -d
    ```
+
+   GitHub Actions builds and publishes `backend`/`frontend` to `ghcr.io/fsteerzer88/` on every
+   push to `main` that passes CI (see the `publish` job in `.github/workflows/ci.yml`) — Unraid
+   just pulls those, it never builds from source. If you'd rather build locally instead (e.g. for
+   testing a change before it's merged), `docker compose up -d --build` still works exactly as
+   before.
+
+   **First-time GHCR access**: the published images are only pullable without authentication if
+   the GitHub packages are set to public (Package settings → Change visibility, on
+   github.com/fsteerzer88?tab=packages, after the first publish). Otherwise, run
+   `docker login ghcr.io` on Unraid with a
+   [personal access token](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-with-a-personal-access-token-classic)
+   that has `read:packages` scope before pulling.
 
    If your Unraid version doesn't have the `docker compose` CLI, install the **Compose Manager**
    plugin (by dcflachs) from Community Applications — it gives you a GUI to add this stack (point
@@ -96,9 +110,11 @@ location QR codes).
 5. **Browse to it**: `https://inventory.indiconvision.com` (or whatever `APP_HOSTNAME` you set)
    from any device.
 
-6. **Updating later**: pull the latest code (`git pull`, or re-run the `curl | tar` command from
-   step 1) and re-run `docker compose up -d --build`. Containers use `restart: unless-stopped`, so
-   they come back automatically after an Unraid reboot as long as Docker is enabled.
+6. **Updating later**: `docker compose pull && docker compose up -d` picks up whatever was most
+   recently published to `main`. To pin to a specific build instead of always tracking `latest`,
+   set `IMAGE_TAG=sha-<short-sha>` in `.env` (find the sha in the Actions run or the package's
+   version list) before pulling. Containers use `restart: unless-stopped`, so they come back
+   automatically after an Unraid reboot as long as Docker is enabled.
 
 Postgres data and uploaded product images are stored in named Docker volumes
 (`vsp-inventory_postgres_data`, `vsp-inventory_product_images`). If you want them included in
@@ -114,4 +130,7 @@ Unraid's appdata-backup flows too, switch those two to bind mounts (e.g. `./data
 
 GitHub Actions (`.github/workflows/ci.yml`) typechecks/builds both apps, builds the backend and
 frontend Docker images, and runs a `docker compose` smoke test (backend health/auth checks, and
-the full request path through the frontend's nginx `/api` proxy) on every push/PR to `main`.
+the full request path through the frontend's nginx `/api` proxy) on every push/PR to `main`. On
+pushes to `main` that pass all of that, a `publish` job builds and pushes both images to
+`ghcr.io/fsteerzer88/vsp-inventory-{backend,frontend}` tagged `latest` and `sha-<short-sha>` —
+that's what `docker compose pull` on Unraid picks up.
