@@ -1,5 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useLogout, useSession } from "@/api/auth";
+import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   ScanLine,
@@ -8,6 +10,7 @@ import {
   Package,
   MapPin,
   Users,
+  LogOut,
 } from "lucide-react";
 
 const primaryNav = [
@@ -20,7 +23,6 @@ const primaryNav = [
 const secondaryNav = [
   { to: "/products", label: "Products", icon: Package },
   { to: "/locations", label: "Locations", icon: MapPin },
-  { to: "/users", label: "Users", icon: Users },
 ];
 
 function NavItem({
@@ -82,6 +84,10 @@ function MobileNavItem({
 }
 
 export function AppShell() {
+  const { user } = useSession();
+  const logout = useLogout();
+  const nav = user?.role === "admin" ? [...secondaryNav, { to: "/users", label: "Users", icon: Users }] : secondaryNav;
+
   return (
     <div className="flex min-h-screen w-full flex-col md:flex-row">
       <aside className="hidden w-60 shrink-0 border-r border-border p-4 md:flex md:flex-col md:gap-6">
@@ -95,16 +101,34 @@ export function AppShell() {
         </nav>
         <div className="mt-4 border-t border-border pt-4">
           <nav className="flex flex-col gap-1">
-            {secondaryNav.map((item) => (
+            {nav.map((item) => (
               <NavItem key={item.to} {...item} />
             ))}
           </nav>
+        </div>
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-4">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{user?.displayName}</p>
+            <p className="truncate text-xs text-muted-foreground">@{user?.username}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => logout.mutate()}
+            title="Sign out"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </aside>
 
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-border px-4 py-3 md:hidden">
           <p className="text-base font-semibold tracking-tight">VSP Inventory</p>
+          <Button variant="ghost" size="icon" onClick={() => logout.mutate()} aria-label="Sign out">
+            <LogOut className="h-4 w-4" />
+          </Button>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 pb-20 md:p-8 md:pb-8">
