@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useProductByBarcode, useProduct } from "@/api/products";
 import { useCheckout } from "@/api/inventory";
 import { ApiError } from "@/api/client";
@@ -114,19 +115,18 @@ export function CheckoutPage() {
               <>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="location">Location</Label>
-                  <select
-                    id="location"
-                    value={inventoryItemId}
-                    onChange={(e) => setInventoryItemId(e.target.value)}
-                    className="h-10 rounded-md border border-input bg-transparent px-3 text-sm"
-                  >
-                    <option value="">Select a location...</option>
-                    {inStock.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.location?.name} ({item.quantity} in stock)
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={inventoryItemId} onValueChange={setInventoryItemId}>
+                    <SelectTrigger id="location">
+                      <SelectValue placeholder="Select a location..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {inStock.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.location?.name} ({item.quantity} in stock)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {selectedItem && (
                   <div className="flex flex-col gap-2">

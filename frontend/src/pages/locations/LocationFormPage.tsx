@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateLocation, useLocation, useLocations, useUpdateLocation, locationQrCodeUrl } from "@/api/locations";
 import { ApiError } from "@/api/client";
 import { Printer } from "lucide-react";
@@ -100,21 +101,24 @@ export function LocationFormPage() {
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="parent">Parent location (optional)</Label>
-            <select
-              id="parent"
-              value={parentLocationId}
-              onChange={(e) => setParentLocationId(e.target.value)}
-              className="h-10 rounded-md border border-input bg-transparent px-3 text-sm"
+            <Select
+              value={parentLocationId || "none"}
+              onValueChange={(value) => setParentLocationId(value === "none" ? "" : value)}
             >
-              <option value="">None</option>
-              {allLocations
-                ?.filter((l) => l.id !== id)
-                .map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name} ({l.code})
-                  </option>
-                ))}
-            </select>
+              <SelectTrigger id="parent">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {allLocations
+                  ?.filter((l) => l.id !== id)
+                  .map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.name} ({l.code})
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
           </div>
           {mutation.isError && (
             <p className="text-sm text-destructive">

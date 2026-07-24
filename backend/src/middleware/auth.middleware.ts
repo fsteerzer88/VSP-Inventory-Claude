@@ -14,6 +14,7 @@ export async function attachUser(req: Request, _res: Response, next: NextFunctio
       username: user.username,
       displayName: user.displayName,
       role: user.role,
+      mustChangePassword: user.mustChangePassword,
     };
   }
   next();

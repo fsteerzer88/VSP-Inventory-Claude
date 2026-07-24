@@ -6,6 +6,7 @@ export interface User {
   displayName: string;
   role: Role;
   isActive?: boolean;
+  mustChangePassword?: boolean;
   createdAt?: string;
 }
 

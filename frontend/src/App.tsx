@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { RequireAuth } from "@/components/layout/RequireAuth";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/auth/LoginPage";
+import { ChangePasswordPage } from "@/pages/auth/ChangePasswordPage";
 import { IntakeWizard } from "@/pages/intake/IntakeWizard";
 import { CheckoutPage } from "@/pages/checkout/CheckoutPage";
 import { InventoryListPage } from "@/pages/inventory/InventoryListPage";
@@ -19,6 +20,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
+        <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/scan/intake" element={<IntakeWizard />} />

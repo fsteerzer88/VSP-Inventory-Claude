@@ -9,6 +9,7 @@ function toPublicUser(user: {
   displayName: string;
   role: string;
   isActive: boolean;
+  mustChangePassword: boolean;
   createdAt: Date;
 }) {
   return {
@@ -17,6 +18,7 @@ function toPublicUser(user: {
     displayName: user.displayName,
     role: user.role,
     isActive: user.isActive,
+    mustChangePassword: user.mustChangePassword,
     createdAt: user.createdAt,
   };
 }
@@ -44,7 +46,9 @@ export async function createUser(req: Request, res: Response) {
 
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({
-    data: { username, passwordHash, displayName, role: role ?? "user" },
+    // The password set here is a temporary/initial one issued by the admin, so the new
+    // user is required to change it the first time they log in.
+    data: { username, passwordHash, displayName, role: role ?? "user", mustChangePassword: true },
   });
   res.status(201).json(toPublicUser(user));
 }
@@ -62,7 +66,12 @@ export async function updateUser(req: Request, res: Response) {
   if (displayName !== undefined) data.displayName = displayName;
   if (role !== undefined) data.role = role;
   if (isActive !== undefined) data.isActive = isActive;
-  if (password) data.passwordHash = await bcrypt.hash(password, 12);
+  if (password) {
+    // Same reasoning as createUser: an admin issuing a new password counts as issuing a
+    // new temporary password, so the user must change it on their next login too.
+    data.passwordHash = await bcrypt.hash(password, 12);
+    data.mustChangePassword = true;
+  }
 
   const user = await prisma.user.update({ where: { id }, data });
   res.json(toPublicUser(user));

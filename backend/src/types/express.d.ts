@@ -14,6 +14,7 @@ declare global {
         username: string;
         displayName: string;
         role: "admin" | "user";
+        mustChangePassword: boolean;
       };
     }
   }

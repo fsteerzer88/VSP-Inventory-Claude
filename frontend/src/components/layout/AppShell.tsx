@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useLogout, useSession } from "@/api/auth";
 import { Button } from "@/components/ui/button";
@@ -86,7 +86,12 @@ function MobileNavItem({
 export function AppShell() {
   const { user } = useSession();
   const logout = useLogout();
+  const navigate = useNavigate();
   const nav = user?.role === "admin" ? [...secondaryNav, { to: "/users", label: "Users", icon: Users }] : secondaryNav;
+
+  function signOut() {
+    logout.mutate(undefined, { onSuccess: () => navigate("/login", { replace: true }) });
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col md:flex-row">
@@ -111,13 +116,7 @@ export function AppShell() {
             <p className="truncate text-sm font-medium">{user?.displayName}</p>
             <p className="truncate text-xs text-muted-foreground">@{user?.username}</p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => logout.mutate()}
-            title="Sign out"
-            aria-label="Sign out"
-          >
+          <Button variant="ghost" size="icon" onClick={signOut} title="Sign out" aria-label="Sign out">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
@@ -126,7 +125,7 @@ export function AppShell() {
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-border px-4 py-3 md:hidden">
           <p className="text-base font-semibold tracking-tight">VSP Inventory</p>
-          <Button variant="ghost" size="icon" onClick={() => logout.mutate()} aria-label="Sign out">
+          <Button variant="ghost" size="icon" onClick={signOut} aria-label="Sign out">
             <LogOut className="h-4 w-4" />
           </Button>
         </header>

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ApiError } from "@/api/client";
 import type { Role } from "@/types/models";
 
@@ -67,15 +68,15 @@ export function UsersAdminPage() {
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="new-role">Role</Label>
-              <select
-                id="new-role"
-                value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
-                className="h-10 rounded-md border border-input bg-transparent px-3 text-sm"
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </select>
+              <Select value={role} onValueChange={(value) => setRole(value as Role)}>
+                <SelectTrigger id="new-role" className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             {createUser.isError && (
               <p className="w-full text-sm text-destructive">
@@ -107,6 +108,7 @@ export function UsersAdminPage() {
                 </p>
                 <p className="text-xs text-muted-foreground capitalize">
                   {user.role} &middot; {user.isActive ? "active" : "deactivated"}
+                  {user.mustChangePassword && " · password change pending"}
                 </p>
               </div>
               <div className="flex gap-2">

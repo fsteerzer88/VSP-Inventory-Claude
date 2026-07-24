@@ -23,9 +23,10 @@ async function main() {
       passwordHash,
       displayName: "Administrator",
       role: "admin",
+      mustChangePassword: true,
     },
   });
-  console.log(`Created admin user "${username}". Change the password after first login.`);
+  console.log(`Created admin user "${username}". You'll be prompted to change the password on first login.`);
 }
 
 main()
