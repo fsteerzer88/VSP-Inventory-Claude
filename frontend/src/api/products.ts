@@ -33,14 +33,14 @@ export function useProductByBarcode(barcode: string | undefined) {
 }
 
 interface UpdateProductInput {
-  barcode?: string;
-  barcodeType?: string;
+  barcode?: string | null;
+  barcodeType?: string | null;
   name?: string;
-  description?: string;
-  manufacturer?: string;
-  category?: string;
-  sku?: string;
-  partNumber?: string;
+  description?: string | null;
+  manufacturer?: string | null;
+  category?: string | null;
+  sku?: string | null;
+  partNumber?: string | null;
   reorderThreshold?: number | null;
 }
 
