@@ -39,7 +39,7 @@ export function LocationPrintPage() {
           >
             <img src={locationQrCodeUrl(location.id)} alt={`QR code for ${location.name}`} className="h-24 w-24" />
             <p className="text-sm font-medium">{location.name}</p>
-            <p className="text-xs text-muted-foreground">{location.code}</p>
+            <p className="text-xs text-muted-foreground">{location.fullCode ?? location.code}</p>
           </div>
         ))}
       </div>

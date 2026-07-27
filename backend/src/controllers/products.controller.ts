@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { HttpError } from "../middleware/error.middleware";
 import { deleteImageFile } from "../services/image-storage.service";
+import { LOCATION_ANCESTOR_INCLUDE, withFullCode } from "../services/location-code.service";
 import { env } from "../config/env";
 
 const SOURCE_INCLUDE = {
@@ -42,10 +43,17 @@ export async function listProducts(req: Request, res: Response) {
 export async function getProduct(req: Request, res: Response) {
   const product = await prisma.product.findUnique({
     where: { id: req.params.id as string },
-    include: { images: true, inventoryItems: { include: { location: true } }, ...SOURCE_INCLUDE },
+    include: {
+      images: true,
+      inventoryItems: { include: { location: { include: LOCATION_ANCESTOR_INCLUDE } } },
+      ...SOURCE_INCLUDE,
+    },
   });
   if (!product) throw new HttpError(404, "Product not found");
-  res.json(product);
+  res.json({
+    ...product,
+    inventoryItems: product.inventoryItems.map((item) => ({ ...item, location: withFullCode(item.location) })),
+  });
 }
 
 export async function lookupProductByBarcode(req: Request, res: Response) {

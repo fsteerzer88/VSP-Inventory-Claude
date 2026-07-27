@@ -276,7 +276,7 @@ export function IntakeWizard() {
             )}
             <div className="flex gap-2">
               <Input
-                placeholder="Or enter location code manually"
+                placeholder="Or enter the full location code, e.g. LR-01-01"
                 value={manualLocationCode}
                 onChange={(e) => setManualLocationCode(e.target.value)}
               />

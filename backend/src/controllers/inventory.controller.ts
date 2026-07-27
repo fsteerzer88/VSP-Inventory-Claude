@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { prisma } from "../config/prisma";
 import { HttpError } from "../middleware/error.middleware";
+import { LOCATION_ANCESTOR_INCLUDE, withFullCode } from "../services/location-code.service";
 
 export async function listInventory(req: Request, res: Response) {
   const { locationId, productId, q } = req.query as {
@@ -24,10 +25,10 @@ export async function listInventory(req: Request, res: Response) {
           }
         : undefined,
     },
-    include: { product: { include: { images: true } }, location: true },
+    include: { product: { include: { images: true } }, location: { include: LOCATION_ANCESTOR_INCLUDE } },
     orderBy: { updatedAt: "desc" },
   });
-  res.json(items);
+  res.json(items.map((item) => ({ ...item, location: withFullCode(item.location) })));
 }
 
 export async function getInventoryItem(req: Request, res: Response) {
@@ -35,7 +36,7 @@ export async function getInventoryItem(req: Request, res: Response) {
     where: { id: req.params.id as string },
     include: {
       product: { include: { images: true } },
-      location: true,
+      location: { include: LOCATION_ANCESTOR_INCLUDE },
       transactions: {
         orderBy: { performedAt: "desc" },
         include: { performedByUser: { select: { id: true, username: true, displayName: true, role: true } } },
@@ -43,7 +44,7 @@ export async function getInventoryItem(req: Request, res: Response) {
     },
   });
   if (!item) throw new HttpError(404, "Inventory item not found");
-  res.json(item);
+  res.json({ ...item, location: withFullCode(item.location) });
 }
 
 interface IntakeBody {

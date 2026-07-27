@@ -34,6 +34,8 @@ export function LocationFormPage() {
   }, [existing]);
 
   const mutation = isEdit ? updateLocation : createLocation;
+  const selectedParent = allLocations?.find((l) => l.id === parentLocationId);
+  const fullCodePreview = selectedParent ? `${selectedParent.fullCode ?? selectedParent.code}-${code}` : code;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -92,8 +94,12 @@ export function LocationFormPage() {
             <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Shelf A3" />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="code">Code</Label>
-            <Input id="code" required value={code} onChange={(e) => setCode(e.target.value)} placeholder="A3" />
+            <Label htmlFor="code">Code (this level only)</Label>
+            <Input id="code" required value={code} onChange={(e) => setCode(e.target.value)} placeholder="01" />
+            <p className="text-xs text-muted-foreground">
+              Only needs to be unique among siblings under the same parent - e.g. shelf "01" and bin "01" can
+              coexist under different racks.
+            </p>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="description">Description</Label>
@@ -114,12 +120,17 @@ export function LocationFormPage() {
                   ?.filter((l) => l.id !== id)
                   .map((l) => (
                     <SelectItem key={l.id} value={l.id}>
-                      {l.name} ({l.code})
+                      {l.name} ({l.fullCode ?? l.code})
                     </SelectItem>
                   ))}
               </SelectContent>
             </Select>
           </div>
+          {code && (
+            <p className="text-sm text-muted-foreground">
+              Full code preview: <span className="font-mono text-foreground">{fullCodePreview}</span>
+            </p>
+          )}
           {mutation.isError && (
             <p className="text-sm text-destructive">
               {mutation.error instanceof ApiError ? mutation.error.message : "Something went wrong"}

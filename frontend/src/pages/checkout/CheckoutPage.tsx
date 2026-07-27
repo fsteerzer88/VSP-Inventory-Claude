@@ -122,7 +122,8 @@ export function CheckoutPage() {
                     <SelectContent>
                       {inStock.map((item) => (
                         <SelectItem key={item.id} value={item.id}>
-                          {item.location?.name} ({item.quantity} in stock)
+                          {item.location?.name} [{item.location?.fullCode ?? item.location?.code}] ({item.quantity}{" "}
+                          in stock)
                         </SelectItem>
                       ))}
                     </SelectContent>

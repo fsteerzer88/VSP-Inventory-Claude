@@ -44,7 +44,7 @@ export function useCreateLocation() {
 export function useUpdateLocation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...input }: { id: string } & Partial<CreateLocationInput>) =>
+    mutationFn: ({ id, ...input }: { id: string } & Partial<CreateLocationInput> & { isActive?: boolean }) =>
       api.patch<Location>(`/locations/${id}`, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["locations"] }),
   });

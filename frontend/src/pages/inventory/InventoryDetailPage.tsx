@@ -23,7 +23,7 @@ export function InventoryDetailPage() {
           </Link>
         </h1>
         <p className="text-sm text-muted-foreground">
-          {item.location?.name} ({item.location?.code}) &middot; {item.quantity} in stock
+          {item.location?.name} ({item.location?.fullCode ?? item.location?.code}) &middot; {item.quantity} in stock
         </p>
       </div>
 

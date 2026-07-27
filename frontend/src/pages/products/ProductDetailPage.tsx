@@ -374,7 +374,10 @@ export function ProductDetailPage() {
                 to={`/inventory/${item.id}`}
                 className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
               >
-                <span>{item.location?.name}</span>
+                <span>
+                  {item.location?.name}{" "}
+                  <span className="text-muted-foreground">({item.location?.fullCode ?? item.location?.code})</span>
+                </span>
                 <span className="font-medium">{item.quantity} in stock</span>
               </Link>
             ))

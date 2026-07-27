@@ -14,8 +14,10 @@ export interface Location {
   id: string;
   name: string;
   code: string;
+  fullCode?: string;
   description: string | null;
   parentLocationId: string | null;
+  isActive?: boolean;
   createdBy: string | null;
   createdAt: string;
 }

@@ -40,11 +40,12 @@ model User {
 model Location {
   id               String     @id @default(uuid())
   name             String
-  code             String     @unique
+  code             String
   description      String?
   parentLocationId String?    @map("parent_location_id")
   parentLocation   Location?  @relation("LocationHierarchy", fields: [parentLocationId], references: [id])
   childLocations   Location[] @relation("LocationHierarchy")
+  isActive         Boolean    @default(true) @map("is_active")
   createdBy        String?    @map("created_by")
   createdByUser    User?      @relation("LocationCreatedBy", fields: [createdBy], references: [id])
   createdAt        DateTime   @default(now()) @map("created_at")
@@ -52,6 +53,12 @@ model Location {
   inventoryItems Inventory[]
   transactions   Transaction[]
 
+  // Codes only need to be unique among siblings (same parent), not globally - that's what
+  // lets a bin "01" exist under both shelf "01" and shelf "02", concatenating into distinct
+  // full codes like LR-01-01 vs LR-02-01. Enforced at the DB level for non-root locations;
+  // root-level (null parent) siblings are checked in the application layer instead, since
+  // Postgres treats NULL as distinct from itself for unique-constraint purposes.
+  @@unique([parentLocationId, code])
   @@map("locations")
 }
 
