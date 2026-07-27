@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "./client";
-import type { Product } from "@/types/models";
+import type { Product, ProductSource } from "@/types/models";
 
 export function useProducts(q?: string) {
   return useQuery<Product[]>({
@@ -29,6 +29,58 @@ export function useProductByBarcode(barcode: string | undefined) {
       }
     },
     enabled: !!barcode,
+  });
+}
+
+interface UpdateProductInput {
+  barcode?: string;
+  barcodeType?: string;
+  name?: string;
+  description?: string;
+  manufacturer?: string;
+  category?: string;
+  sku?: string;
+  partNumber?: string;
+  reorderThreshold?: number | null;
+}
+
+export function useUpdateProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: { id: string } & UpdateProductInput) =>
+      api.patch<Product>(`/products/${id}`, input),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["products", "detail", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+}
+
+export function useDeleteProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/products/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products"] }),
+  });
+}
+
+export function useAddProductSource() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ productId, label, url, notes }: { productId: string; label: string; url: string; notes?: string }) =>
+      api.post<ProductSource>(`/products/${productId}/sources`, { label, url, notes }),
+    onSuccess: (_data, variables) =>
+      queryClient.invalidateQueries({ queryKey: ["products", "detail", variables.productId] }),
+  });
+}
+
+export function useDeleteProductSource() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ productId, sourceId }: { productId: string; sourceId: string }) =>
+      api.delete<void>(`/products/${productId}/sources/${sourceId}`),
+    onSuccess: (_data, variables) =>
+      queryClient.invalidateQueries({ queryKey: ["products", "detail", variables.productId] }),
   });
 }
 

@@ -29,6 +29,17 @@ export interface ProductImage {
   uploadedAt: string;
 }
 
+export interface ProductSource {
+  id: string;
+  productId: string;
+  label: string;
+  url: string;
+  notes: string | null;
+  createdBy: string | null;
+  createdByUser?: Pick<User, "id" | "username" | "displayName" | "role">;
+  createdAt: string;
+}
+
 export interface Product {
   id: string;
   barcode: string | null;
@@ -46,6 +57,7 @@ export interface Product {
   updatedAt: string;
   images?: ProductImage[];
   inventoryItems?: (InventoryItem & { location: Location })[];
+  sources?: ProductSource[];
 }
 
 export interface InventoryItem {

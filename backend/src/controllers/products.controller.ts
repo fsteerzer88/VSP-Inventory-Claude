@@ -1,10 +1,18 @@
 import type { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { HttpError } from "../middleware/error.middleware";
 import { deleteImageFile } from "../services/image-storage.service";
 import { env } from "../config/env";
+
+const SOURCE_INCLUDE = {
+  sources: {
+    include: { createdByUser: { select: { id: true, username: true, displayName: true, role: true } } },
+    orderBy: { createdAt: "asc" as const },
+  },
+};
 
 export async function listProducts(req: Request, res: Response) {
   const { q, category } = req.query as { q?: string; category?: string };
@@ -34,7 +42,7 @@ export async function listProducts(req: Request, res: Response) {
 export async function getProduct(req: Request, res: Response) {
   const product = await prisma.product.findUnique({
     where: { id: req.params.id as string },
-    include: { images: true, inventoryItems: { include: { location: true } } },
+    include: { images: true, inventoryItems: { include: { location: true } }, ...SOURCE_INCLUDE },
   });
   if (!product) throw new HttpError(404, "Product not found");
   res.json(product);
@@ -104,6 +112,55 @@ export async function updateProduct(req: Request, res: Response) {
 
   const product = await prisma.product.update({ where: { id }, data });
   res.json(product);
+}
+
+export async function deleteProduct(req: Request, res: Response) {
+  const { id } = req.params as { id: string };
+  const product = await prisma.product.findUnique({ where: { id }, include: { images: true } });
+  if (!product) throw new HttpError(404, "Product not found");
+
+  try {
+    await prisma.product.delete({ where: { id } });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+      throw new HttpError(
+        409,
+        "Cannot delete a product with existing inventory or transaction history. Check out all remaining stock first.",
+      );
+    }
+    throw err;
+  }
+
+  for (const image of product.images) {
+    deleteImageFile(image.filePath);
+  }
+  res.status(204).end();
+}
+
+export async function addProductSource(req: Request, res: Response) {
+  const { id } = req.params as { id: string };
+  const { label, url, notes } = req.body as { label?: string; url?: string; notes?: string };
+  if (!label || !url) {
+    throw new HttpError(400, "label and url are required");
+  }
+
+  const product = await prisma.product.findUnique({ where: { id } });
+  if (!product) throw new HttpError(404, "Product not found");
+
+  const source = await prisma.productSource.create({
+    data: { productId: id, label, url, notes, createdBy: req.user!.id },
+    include: { createdByUser: { select: { id: true, username: true, displayName: true, role: true } } },
+  });
+  res.status(201).json(source);
+}
+
+export async function deleteProductSource(req: Request, res: Response) {
+  const { id, sourceId } = req.params as { id: string; sourceId: string };
+  const source = await prisma.productSource.findFirst({ where: { id: sourceId, productId: id } });
+  if (!source) throw new HttpError(404, "Source not found");
+
+  await prisma.productSource.delete({ where: { id: sourceId } });
+  res.status(204).end();
 }
 
 export async function uploadProductImage(req: Request, res: Response) {

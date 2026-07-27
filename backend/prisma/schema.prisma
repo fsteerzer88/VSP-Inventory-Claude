@@ -28,10 +28,11 @@ model User {
   mustChangePassword Boolean  @default(false) @map("must_change_password")
   createdAt          DateTime @default(now()) @map("created_at")
 
-  createdProducts  Product[]      @relation("ProductCreatedBy")
-  createdLocations Location[]     @relation("LocationCreatedBy")
-  uploadedImages   ProductImage[] @relation("ImageUploadedBy")
-  transactions     Transaction[]  @relation("TransactionPerformedBy")
+  createdProducts  Product[]       @relation("ProductCreatedBy")
+  createdLocations Location[]      @relation("LocationCreatedBy")
+  uploadedImages   ProductImage[]  @relation("ImageUploadedBy")
+  transactions     Transaction[]   @relation("TransactionPerformedBy")
+  createdSources   ProductSource[] @relation("SourceCreatedBy")
 
   @@map("users")
 }
@@ -74,8 +75,23 @@ model Product {
   images         ProductImage[]
   inventoryItems Inventory[]
   transactions   Transaction[]
+  sources        ProductSource[]
 
   @@map("products")
+}
+
+model ProductSource {
+  id            String   @id @default(uuid())
+  productId     String   @map("product_id")
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label         String
+  url           String
+  notes         String?
+  createdBy     String?  @map("created_by")
+  createdByUser User?    @relation("SourceCreatedBy", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("product_sources")
 }
 
 model ProductImage {
