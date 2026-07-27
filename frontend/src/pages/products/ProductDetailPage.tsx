@@ -17,7 +17,8 @@ export function ProductDetailPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{product.name}</h1>
         <p className="text-sm text-muted-foreground">
-          {product.manufacturer} {product.sku && `· SKU ${product.sku}`} {product.barcode && `· ${product.barcode}`}
+          {product.manufacturer} {product.partNumber && `· Part # ${product.partNumber}`}{" "}
+          {product.sku && `· SKU ${product.sku}`} {product.barcode && `· ${product.barcode}`}
         </p>
       </div>
 

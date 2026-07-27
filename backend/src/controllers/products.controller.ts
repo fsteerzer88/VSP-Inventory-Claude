@@ -16,6 +16,7 @@ export async function listProducts(req: Request, res: Response) {
               OR: [
                 { name: { contains: q, mode: "insensitive" } },
                 { sku: { contains: q, mode: "insensitive" } },
+                { partNumber: { contains: q, mode: "insensitive" } },
                 { barcode: { contains: q, mode: "insensitive" } },
                 { manufacturer: { contains: q, mode: "insensitive" } },
               ],
@@ -51,7 +52,7 @@ export async function lookupProductByBarcode(req: Request, res: Response) {
 }
 
 export async function createProduct(req: Request, res: Response) {
-  const { barcode, barcodeType, name, description, manufacturer, category, sku, reorderThreshold } =
+  const { barcode, barcodeType, name, description, manufacturer, category, sku, partNumber, reorderThreshold } =
     req.body as {
       barcode?: string;
       barcodeType?: string;
@@ -60,6 +61,7 @@ export async function createProduct(req: Request, res: Response) {
       manufacturer?: string;
       category?: string;
       sku?: string;
+      partNumber?: string;
       reorderThreshold?: number;
     };
   if (!name) throw new HttpError(400, "name is required");
@@ -73,6 +75,7 @@ export async function createProduct(req: Request, res: Response) {
       manufacturer,
       category,
       sku,
+      partNumber,
       reorderThreshold,
       createdBy: req.user!.id,
     },
@@ -90,6 +93,7 @@ export async function updateProduct(req: Request, res: Response) {
     "manufacturer",
     "category",
     "sku",
+    "partNumber",
     "reorderThreshold",
   ] as const;
   const body = req.body as Record<string, unknown>;

@@ -38,6 +38,7 @@ export interface Product {
   manufacturer: string | null;
   category: string | null;
   sku: string | null;
+  partNumber: string | null;
   reorderThreshold: number | null;
   metadata: Record<string, unknown>;
   createdBy: string | null;

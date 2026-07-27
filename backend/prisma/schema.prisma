@@ -63,6 +63,7 @@ model Product {
   manufacturer     String?
   category         String?
   sku              String?
+  partNumber       String?  @map("part_number")
   reorderThreshold Int?     @map("reorder_threshold")
   metadata         Json     @default("{}")
   createdBy        String?  @map("created_by")

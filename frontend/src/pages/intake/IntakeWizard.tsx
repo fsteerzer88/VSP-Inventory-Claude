@@ -40,6 +40,7 @@ export function IntakeWizard() {
   const [manufacturer, setManufacturer] = useState("");
   const [category, setCategory] = useState("");
   const [sku, setSku] = useState("");
+  const [partNumber, setPartNumber] = useState("");
   const [locationCode, setLocationCode] = useState("");
   const [manualLocationCode, setManualLocationCode] = useState("");
   const [location, setLocation] = useState<Location | null>(null);
@@ -89,7 +90,14 @@ export function IntakeWizard() {
         });
       } else {
         result = await intake.mutateAsync({
-          newProduct: { barcode, name, manufacturer: manufacturer || undefined, category: category || undefined, sku: sku || undefined },
+          newProduct: {
+            barcode,
+            name,
+            manufacturer: manufacturer || undefined,
+            category: category || undefined,
+            sku: sku || undefined,
+            partNumber: partNumber || undefined,
+          },
           locationId: location!.id,
           quantity,
         });
@@ -113,6 +121,7 @@ export function IntakeWizard() {
     setManufacturer("");
     setCategory("");
     setSku("");
+    setPartNumber("");
     setLocationCode("");
     setManualLocationCode("");
     setLocation(null);
@@ -232,6 +241,10 @@ export function IntakeWizard() {
               <Label htmlFor="sku">SKU</Label>
               <Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} />
               <SkuScanner onExtracted={setSku} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="partNumber">Part number</Label>
+              <Input id="partNumber" value={partNumber} onChange={(e) => setPartNumber(e.target.value)} />
             </div>
             <div className="flex gap-2">
               <Button onClick={() => setStep("scan-location")} disabled={!name}>

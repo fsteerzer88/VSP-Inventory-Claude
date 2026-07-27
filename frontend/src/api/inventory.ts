@@ -33,6 +33,7 @@ interface IntakeInput {
     manufacturer?: string;
     category?: string;
     sku?: string;
+    partNumber?: string;
   };
   locationId: string;
   quantity: number;

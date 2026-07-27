@@ -18,6 +18,7 @@ export async function listInventory(req: Request, res: Response) {
             OR: [
               { name: { contains: q, mode: "insensitive" } },
               { sku: { contains: q, mode: "insensitive" } },
+              { partNumber: { contains: q, mode: "insensitive" } },
               { barcode: { contains: q, mode: "insensitive" } },
             ],
           }
@@ -55,6 +56,7 @@ interface IntakeBody {
     manufacturer?: string;
     category?: string;
     sku?: string;
+    partNumber?: string;
   };
   locationId: string;
   quantity: number;
@@ -87,6 +89,7 @@ export async function intake(req: Request, res: Response) {
           manufacturer: body.newProduct.manufacturer,
           category: body.newProduct.category,
           sku: body.newProduct.sku,
+          partNumber: body.newProduct.partNumber,
           createdBy: req.user!.id,
         },
       });
