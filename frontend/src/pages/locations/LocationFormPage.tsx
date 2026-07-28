@@ -46,7 +46,7 @@ export function LocationFormPage() {
       parentLocationId: parentLocationId || null,
     };
     if (isEdit) {
-      updateLocation.mutate({ id, ...payload }, { onSuccess: () => navigate("/locations") });
+      updateLocation.mutate({ id, ...payload }, { onSuccess: () => navigate(`/locations/${id}`) });
     } else {
       createLocation.mutate(payload, {
         onSuccess: (location) => setCreatedId(location.id),
@@ -140,7 +140,7 @@ export function LocationFormPage() {
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Saving..." : isEdit ? "Save changes" : "Create location"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => navigate("/locations")}>
+            <Button type="button" variant="outline" onClick={() => navigate(isEdit ? `/locations/${id}` : "/locations")}>
               Cancel
             </Button>
           </div>

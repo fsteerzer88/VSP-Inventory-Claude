@@ -32,11 +32,15 @@ app.use(
     secret: env.sessionSecret,
     resave: false,
     saveUninitialized: false,
+    // Rolling: each request extends the cookie's expiry, so an 8-hour shift of steady
+    // use never gets interrupted - the 8 hours is measured from the last activity, not
+    // a hard cutoff from login.
+    rolling: true,
     cookie: {
       httpOnly: true,
       secure: env.nodeEnv === "production",
       sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: 8 * 60 * 60 * 1000,
     },
   }),
 );

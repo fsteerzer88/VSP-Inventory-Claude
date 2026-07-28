@@ -11,6 +11,7 @@ import { InventoryDetailPage } from "@/pages/inventory/InventoryDetailPage";
 import { ProductsListPage } from "@/pages/products/ProductsListPage";
 import { ProductDetailPage } from "@/pages/products/ProductDetailPage";
 import { LocationsListPage } from "@/pages/locations/LocationsListPage";
+import { LocationDetailPage } from "@/pages/locations/LocationDetailPage";
 import { LocationFormPage } from "@/pages/locations/LocationFormPage";
 import { LocationPrintPage } from "@/pages/locations/LocationPrintPage";
 import { UsersAdminPage } from "@/pages/users/UsersAdminPage";
@@ -32,7 +33,8 @@ function App() {
           <Route path="/locations" element={<LocationsListPage />} />
           <Route path="/locations/new" element={<LocationFormPage />} />
           <Route path="/locations/print" element={<LocationPrintPage />} />
-          <Route path="/locations/:id" element={<LocationFormPage />} />
+          <Route path="/locations/:id" element={<LocationDetailPage />} />
+          <Route path="/locations/:id/edit" element={<LocationFormPage />} />
           <Route element={<RequireAuth adminOnly />}>
             <Route path="/users" element={<UsersAdminPage />} />
           </Route>
