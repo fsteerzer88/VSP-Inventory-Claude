@@ -46,6 +46,7 @@ export function ProductDetailPage() {
   const [form, setForm] = useState<ProductFormState | null>(null);
   const [sourceLabel, setSourceLabel] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceNotes, setSourceNotes] = useState("");
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading...</p>;
   if (!product) return <p className="text-sm text-muted-foreground">Product not found.</p>;
@@ -97,11 +98,12 @@ export function ProductDetailPage() {
     e.preventDefault();
     if (!sourceLabel.trim() || !sourceUrl.trim()) return;
     addSource.mutate(
-      { productId: product!.id, label: sourceLabel.trim(), url: sourceUrl.trim() },
+      { productId: product!.id, label: sourceLabel.trim(), url: sourceUrl.trim(), notes: sourceNotes.trim() || undefined },
       {
         onSuccess: () => {
           setSourceLabel("");
           setSourceUrl("");
+          setSourceNotes("");
         },
       },
     );
@@ -300,63 +302,93 @@ export function ProductDetailPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {product.sources?.length ? (
-            <div className="flex flex-col gap-2">
-              {product.sources.map((source) => (
-                <div
-                  key={source.id}
-                  className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2"
-                >
-                  <a
-                    href={source.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex min-w-0 items-center gap-1.5 text-sm hover:underline"
-                  >
-                    <span className="truncate font-medium">{source.label}</span>
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  </a>
-                  {isAdmin && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Remove ${source.label}`}
-                      onClick={() => deleteSource.mutate({ productId: product.id, sourceId: source.id })}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="py-1.5 pr-3 font-medium">Source</th>
+                    <th className="py-1.5 pr-3 font-medium">Notes</th>
+                    {isAdmin && <th className="w-10 py-1.5" />}
+                  </tr>
+                </thead>
+                <tbody>
+                  {product.sources.map((source) => (
+                    <tr key={source.id} className="border-b border-border last:border-0">
+                      <td className="py-2 pr-3 align-top">
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 font-medium hover:underline"
+                        >
+                          {source.label}
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        </a>
+                      </td>
+                      <td className="py-2 pr-3 align-top text-muted-foreground">{source.notes || "—"}</td>
+                      {isAdmin && (
+                        <td className="py-2 align-top">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Remove ${source.label}`}
+                            onClick={() => deleteSource.mutate({ productId: product.id, sourceId: source.id })}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No purchase sources added yet.</p>
           )}
 
           {isAdmin && (
-            <form className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-end" onSubmit={handleAddSource}>
-              <div className="flex flex-1 flex-col gap-1.5">
-                <Label htmlFor="source-label">Source name</Label>
-                <Input
-                  id="source-label"
-                  placeholder="e.g. McMaster-Carr"
-                  value={sourceLabel}
-                  onChange={(e) => setSourceLabel(e.target.value)}
-                />
+            <form className="flex flex-col gap-3 border-t border-border pt-3" onSubmit={handleAddSource}>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="flex flex-1 flex-col gap-1.5">
+                  <Label htmlFor="source-label">Source name</Label>
+                  <Input
+                    id="source-label"
+                    placeholder="e.g. McMaster-Carr"
+                    value={sourceLabel}
+                    onChange={(e) => setSourceLabel(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-1 flex-col gap-1.5">
+                  <Label htmlFor="source-url">URL</Label>
+                  <Input
+                    id="source-url"
+                    type="url"
+                    placeholder="https://..."
+                    value={sourceUrl}
+                    onChange={(e) => setSourceUrl(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="flex flex-1 flex-col gap-1.5">
-                <Label htmlFor="source-url">URL</Label>
-                <Input
-                  id="source-url"
-                  type="url"
-                  placeholder="https://..."
-                  value={sourceUrl}
-                  onChange={(e) => setSourceUrl(e.target.value)}
-                />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="flex flex-1 flex-col gap-1.5">
+                  <Label htmlFor="source-notes">Notes</Label>
+                  <Input
+                    id="source-notes"
+                    placeholder="e.g. use part # for reorder, min order qty 10"
+                    value={sourceNotes}
+                    onChange={(e) => setSourceNotes(e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={addSource.isPending || !sourceLabel.trim() || !sourceUrl.trim()}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add
+                </Button>
               </div>
-              <Button type="submit" size="sm" disabled={addSource.isPending || !sourceLabel.trim() || !sourceUrl.trim()}>
-                <Plus className="h-4 w-4" />
-                Add
-              </Button>
             </form>
           )}
         </CardContent>

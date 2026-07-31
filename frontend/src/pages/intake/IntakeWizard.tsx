@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { BarcodeFormat } from "@zxing/library";
 import { BarcodeScanner } from "@/components/scanner/BarcodeScanner";
 import { PhotoCapture } from "@/components/camera/PhotoCapture";
-import { SkuScanner } from "@/components/ocr/SkuScanner";
+import { OcrFillSelect } from "@/components/ocr/OcrFillSelect";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,8 @@ import { useProductByBarcode, useUploadProductImage } from "@/api/products";
 import { useLocationByCode } from "@/api/locations";
 import { useIntake } from "@/api/inventory";
 import { ApiError } from "@/api/client";
-import { CheckCircle2, ScanLine } from "lucide-react";
+import { detectWordsInImage, type DetectedWord } from "@/lib/ocr";
+import { CheckCircle2, Loader2, ScanLine, ScanText } from "lucide-react";
 import type { Location } from "@/types/models";
 
 type Step = "scan-product" | "photo" | "details" | "scan-location" | "confirm" | "done";
@@ -46,6 +47,9 @@ export function IntakeWizard() {
   const [location, setLocation] = useState<Location | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [ocrWords, setOcrWords] = useState<DetectedWord[]>([]);
+  const [ocrStatus, setOcrStatus] = useState<"idle" | "scanning" | "done" | "error">("idle");
+  const [ocrError, setOcrError] = useState<string | null>(null);
 
   const existingProduct = useProductByBarcode(barcode || undefined);
   const uploadImage = useUploadProductImage();
@@ -77,6 +81,27 @@ export function IntakeWizard() {
       setStep("confirm");
     }
   }, [locationLookup.data]);
+
+  // A new/retaken photo invalidates any previously-detected text.
+  useEffect(() => {
+    setOcrWords([]);
+    setOcrStatus("idle");
+    setOcrError(null);
+  }, [photoFile]);
+
+  async function runOcr() {
+    if (!photoFile) return;
+    setOcrStatus("scanning");
+    setOcrError(null);
+    try {
+      const words = await detectWordsInImage(photoFile);
+      setOcrWords(words);
+      setOcrStatus("done");
+    } catch (err) {
+      setOcrError(err instanceof Error ? err.message : "Could not read text from the photo");
+      setOcrStatus("error");
+    }
+  }
 
   async function handleSubmit() {
     setError(null);
@@ -127,6 +152,9 @@ export function IntakeWizard() {
     setLocation(null);
     setQuantity(1);
     setError(null);
+    setOcrWords([]);
+    setOcrStatus("idle");
+    setOcrError(null);
   }
 
   if (step === "done") {
@@ -225,26 +253,75 @@ export function IntakeWizard() {
             <CardTitle>Product details</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
+            {photoFile && (
+              <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/50 p-3">
+                <Button type="button" size="sm" variant="outline" onClick={runOcr} disabled={ocrStatus === "scanning"}>
+                  {ocrStatus === "scanning" ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Reading photo...
+                    </>
+                  ) : (
+                    <>
+                      <ScanText className="h-4 w-4" />
+                      {ocrStatus === "done" ? "Re-scan text from photo" : "Scan text from photo"}
+                    </>
+                  )}
+                </Button>
+                {ocrStatus === "done" && (
+                  <p className="text-xs text-muted-foreground">
+                    {ocrWords.length > 0
+                      ? `${ocrWords.length} word(s) found - use the scan icon next to a field below to fill it.`
+                      : "No text detected - try retaking the photo with better lighting/focus."}
+                  </p>
+                )}
+                {ocrStatus === "error" && <p className="text-xs text-destructive">{ocrError}</p>}
+              </div>
+            )}
             <div className="flex flex-col gap-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} />
+              <div className="flex gap-2">
+                <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
+                <OcrFillSelect words={ocrWords} onPick={setName} label="name" />
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="manufacturer">Manufacturer</Label>
-              <Input id="manufacturer" value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} />
+              <div className="flex gap-2">
+                <Input
+                  id="manufacturer"
+                  value={manufacturer}
+                  onChange={(e) => setManufacturer(e.target.value)}
+                  className="flex-1"
+                />
+                <OcrFillSelect words={ocrWords} onPick={setManufacturer} label="manufacturer" />
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="category">Category</Label>
-              <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} />
+              <div className="flex gap-2">
+                <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="flex-1" />
+                <OcrFillSelect words={ocrWords} onPick={setCategory} label="category" />
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="sku">SKU</Label>
-              <Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} />
-              <SkuScanner onExtracted={setSku} />
+              <div className="flex gap-2">
+                <Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} className="flex-1" />
+                <OcrFillSelect words={ocrWords} onPick={setSku} label="SKU" />
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="partNumber">Part number</Label>
-              <Input id="partNumber" value={partNumber} onChange={(e) => setPartNumber(e.target.value)} />
+              <div className="flex gap-2">
+                <Input
+                  id="partNumber"
+                  value={partNumber}
+                  onChange={(e) => setPartNumber(e.target.value)}
+                  className="flex-1"
+                />
+                <OcrFillSelect words={ocrWords} onPick={setPartNumber} label="part number" />
+              </div>
             </div>
             <div className="flex gap-2">
               <Button onClick={() => setStep("scan-location")} disabled={!name}>
