@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Archive, ArchiveRestore, MapPin, Plus, Printer } from "lucide-react";
+import { Archive, ArchiveRestore, ListPlus, MapPin, Plus, Printer } from "lucide-react";
 import type { Location } from "@/types/models";
 
 interface LocationNode extends Location {
@@ -139,6 +139,12 @@ export function LocationsListPage() {
               </Link>
             </Button>
           )}
+          <Button variant="outline" asChild>
+            <Link to="/locations/bulk-import">
+              <ListPlus className="h-4 w-4" />
+              Bulk import
+            </Link>
+          </Button>
           <Button asChild>
             <Link to="/locations/new">
               <Plus className="h-4 w-4" />

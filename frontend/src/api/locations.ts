@@ -50,6 +50,21 @@ export function useUpdateLocation() {
   });
 }
 
+export interface BulkLocationRow {
+  name: string;
+  code: string;
+  parentFullCode?: string;
+  description?: string;
+}
+
+export function useBulkCreateLocations() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rows: BulkLocationRow[]) => api.post<{ created: Location[] }>("/locations/bulk", { rows }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["locations"] }),
+  });
+}
+
 export function useDeleteLocation() {
   const queryClient = useQueryClient();
   return useMutation({

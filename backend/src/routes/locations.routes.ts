@@ -8,5 +8,6 @@ locationsRoutes.get("/lookup", locationsController.lookupLocation);
 locationsRoutes.get("/:id", locationsController.getLocation);
 locationsRoutes.get("/:id/qrcode.svg", locationsController.getLocationQrCode);
 locationsRoutes.post("/", locationsController.createLocation);
+locationsRoutes.post("/bulk", locationsController.bulkCreateLocations);
 locationsRoutes.patch("/:id", locationsController.updateLocation);
 locationsRoutes.delete("/:id", locationsController.deleteLocation);

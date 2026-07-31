@@ -81,6 +81,80 @@ export async function createLocation(req: Request, res: Response) {
   res.status(201).json(withFullCode(location));
 }
 
+interface BulkRow {
+  name?: string;
+  code?: string;
+  parentFullCode?: string;
+  description?: string;
+}
+
+const MAX_BULK_ROWS = 500;
+
+export async function bulkCreateLocations(req: Request, res: Response) {
+  const { rows } = req.body as { rows?: BulkRow[] };
+  if (!rows || !Array.isArray(rows) || rows.length === 0) {
+    throw new HttpError(400, "rows must be a non-empty array");
+  }
+  if (rows.length > MAX_BULK_ROWS) {
+    throw new HttpError(400, `Cannot import more than ${MAX_BULK_ROWS} locations at once`);
+  }
+
+  const created = await prisma.$transaction(async (tx) => {
+    // Seed a fullCode -> id lookup from everything that already exists, then extend it as
+    // each row is created so later rows in the same batch can reference parents created
+    // earlier in the batch (e.g. a rack on line 1, its shelves on lines 2-3, their bins
+    // after that) without requiring a separate request per hierarchy level.
+    const existingLocations = await tx.location.findMany({ include: ANCESTOR_INCLUDE });
+    const fullCodeToId = new Map<string, string>();
+    for (const loc of existingLocations) {
+      fullCodeToId.set(withFullCode(loc).fullCode.toLowerCase(), loc.id);
+    }
+
+    const results: ReturnType<typeof withFullCode>[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const lineNum = i + 1;
+      const name = rows[i].name?.trim();
+      const code = rows[i].code?.trim();
+      const parentFullCode = rows[i].parentFullCode?.trim();
+      const description = rows[i].description?.trim();
+
+      if (!name || !code) {
+        throw new HttpError(400, `Row ${lineNum}: name and code are required`);
+      }
+
+      let parentLocationId: string | null = null;
+      if (parentFullCode) {
+        const foundId = fullCodeToId.get(parentFullCode.toLowerCase());
+        if (!foundId) {
+          throw new HttpError(
+            400,
+            `Row ${lineNum}: parent location "${parentFullCode}" not found - create it first, or list it on an earlier line in this import`,
+          );
+        }
+        parentLocationId = foundId;
+      }
+
+      const duplicate = await tx.location.findFirst({ where: { code, parentLocationId } });
+      if (duplicate) {
+        throw new HttpError(409, `Row ${lineNum}: code "${code}" already exists under that parent`);
+      }
+
+      const location = await tx.location.create({
+        data: { name, code, description: description || undefined, parentLocationId, createdBy: req.user!.id },
+        include: ANCESTOR_INCLUDE,
+      });
+      const withCode = withFullCode(location);
+      fullCodeToId.set(withCode.fullCode.toLowerCase(), location.id);
+      results.push(withCode);
+    }
+
+    return results;
+  });
+
+  res.status(201).json({ created });
+}
+
 export async function updateLocation(req: Request, res: Response) {
   const { id } = req.params as { id: string };
   const { name, code, description, parentLocationId, isActive } = req.body as {

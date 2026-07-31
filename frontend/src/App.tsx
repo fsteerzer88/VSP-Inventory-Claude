@@ -14,6 +14,7 @@ import { LocationsListPage } from "@/pages/locations/LocationsListPage";
 import { LocationDetailPage } from "@/pages/locations/LocationDetailPage";
 import { LocationFormPage } from "@/pages/locations/LocationFormPage";
 import { LocationPrintPage } from "@/pages/locations/LocationPrintPage";
+import { LocationsBulkImportPage } from "@/pages/locations/LocationsBulkImportPage";
 import { UsersAdminPage } from "@/pages/users/UsersAdminPage";
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/locations" element={<LocationsListPage />} />
           <Route path="/locations/new" element={<LocationFormPage />} />
+          <Route path="/locations/bulk-import" element={<LocationsBulkImportPage />} />
           <Route path="/locations/print" element={<LocationPrintPage />} />
           <Route path="/locations/:id" element={<LocationDetailPage />} />
           <Route path="/locations/:id/edit" element={<LocationFormPage />} />
