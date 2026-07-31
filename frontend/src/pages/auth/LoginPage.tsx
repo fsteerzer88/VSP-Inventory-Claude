@@ -15,7 +15,11 @@ export function LoginPage() {
   const location = useLocation();
   const { isAuthenticated } = useSession();
 
-  const from = (location.state as { from?: Location })?.from?.pathname ?? "/";
+  // Preserve the full path (including query string, e.g. a print job's ?ids=...) that
+  // RequireAuth redirected away from - not just the pathname, or a session timeout
+  // mid-task would silently drop whatever was in the URL after logging back in.
+  const fromLocation = (location.state as { from?: Location })?.from;
+  const from = fromLocation ? `${fromLocation.pathname}${fromLocation.search}${fromLocation.hash}` : "/";
 
   if (isAuthenticated) {
     return <Navigate to={from} replace />;
