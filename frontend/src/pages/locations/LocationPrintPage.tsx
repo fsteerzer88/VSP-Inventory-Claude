@@ -38,8 +38,10 @@ export function LocationPrintPage() {
             className="flex flex-col items-center gap-1 rounded-md border border-border p-3 text-center print:break-inside-avoid print:border-black"
           >
             <img src={locationQrCodeUrl(location.id)} alt={`QR code for ${location.name}`} className="h-24 w-24" />
-            <p className="text-sm font-medium">{location.name}</p>
-            <p className="text-xs text-muted-foreground">{location.fullCode ?? location.code}</p>
+            <p className="font-mono text-base font-bold leading-tight print:text-black">
+              {location.fullCode ?? location.code}
+            </p>
+            <p className="text-xs text-muted-foreground print:text-black">{location.name}</p>
           </div>
         ))}
       </div>
