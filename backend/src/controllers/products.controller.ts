@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
-import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { HttpError } from "../middleware/error.middleware";
 import { deleteImageFile } from "../services/image-storage.service";
@@ -124,22 +123,38 @@ export async function updateProduct(req: Request, res: Response) {
 
 export async function deleteProduct(req: Request, res: Response) {
   const { id } = req.params as { id: string };
-  const product = await prisma.product.findUnique({ where: { id }, include: { images: true } });
-  if (!product) throw new HttpError(404, "Product not found");
 
-  try {
-    await prisma.product.delete({ where: { id } });
-  } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+  // Checking stock out only zeroes an inventory_items row's quantity - it doesn't remove
+  // the row, and transaction history is never removed by ordinary use either. Both have
+  // an ON DELETE RESTRICT foreign key to products, so a plain prisma.product.delete would
+  // always fail once a product has ever been intaken, regardless of current stock level.
+  // The only thing that should actually block deletion is stock still sitting somewhere;
+  // once that's zero, clean up the now-inert inventory rows and history ourselves so the
+  // delete can proceed.
+  const images = await prisma.$transaction(async (tx) => {
+    const product = await tx.product.findUnique({
+      where: { id },
+      include: { images: true, inventoryItems: true },
+    });
+    if (!product) throw new HttpError(404, "Product not found");
+
+    const totalInStock = product.inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
+    if (totalInStock > 0) {
+      const locationCount = product.inventoryItems.filter((item) => item.quantity > 0).length;
       throw new HttpError(
         409,
-        "Cannot delete a product with existing inventory or transaction history. Check out all remaining stock first.",
+        `This product still has ${totalInStock} unit(s) in stock across ${locationCount} location(s). Check out all remaining stock before deleting.`,
       );
     }
-    throw err;
-  }
 
-  for (const image of product.images) {
+    await tx.transaction.deleteMany({ where: { productId: id } });
+    await tx.inventory.deleteMany({ where: { productId: id } });
+    await tx.product.delete({ where: { id } });
+
+    return product.images;
+  });
+
+  for (const image of images) {
     deleteImageFile(image.filePath);
   }
   res.status(204).end();

@@ -87,7 +87,12 @@ export function ProductDetailPage() {
   }
 
   function handleDelete() {
-    if (!window.confirm(`Delete "${product!.name}"? This can't be undone.`)) return;
+    if (
+      !window.confirm(
+        `Delete "${product!.name}"? This also permanently deletes its transaction history and can't be undone.`,
+      )
+    )
+      return;
     deleteProduct.mutate(product!.id, {
       onSuccess: () => navigate("/products"),
       onError: (err) => window.alert(err instanceof ApiError ? err.message : "Could not delete product"),
