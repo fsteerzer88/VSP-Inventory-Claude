@@ -2,15 +2,22 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBradyPrinter } from "@/hooks/useBradyPrinter";
-import { renderLocationLabelImage } from "@/lib/brady-label-image";
+import { renderLocationLabelImage, downloadLocationLabelImage } from "@/lib/brady-label-image";
 import type { Location } from "@/types/models";
-import { Bluetooth, BluetoothOff, Loader2, Printer } from "lucide-react";
+import { Bluetooth, BluetoothOff, Download, Loader2, Printer } from "lucide-react";
+
+function labelFilename(location: Location): string {
+  const safe = (location.fullCode ?? location.code).replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `location-${safe}.png`;
+}
 
 export function BradyPrinterPanel({ locations }: { locations: Location[] }) {
   const { isSupportedBrowser, isConnected, isConnecting, connectError, info, connect, disconnect, printImage } =
     useBradyPrinter();
   const [printState, setPrintState] = useState<{ index: number; total: number } | null>(null);
   const [printError, setPrintError] = useState<string | null>(null);
+  const [downloadState, setDownloadState] = useState<{ index: number; total: number } | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   async function handlePrintAll() {
     setPrintError(null);
@@ -32,53 +39,83 @@ export function BradyPrinterPanel({ locations }: { locations: Location[] }) {
     setPrintState(null);
   }
 
-  if (!isSupportedBrowser) {
-    return (
-      <Card className="print:hidden">
-        <CardHeader>
-          <CardTitle className="text-base">Brady printer (Bluetooth)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            This browser doesn't support Web Bluetooth, so direct Brady printer printing isn't available here. Use
-            Chrome or Edge (or Bluefy on iOS) instead, or use the regular Print button above.
-          </p>
-        </CardContent>
-      </Card>
-    );
+  async function handleDownloadAll() {
+    setDownloadError(null);
+    for (let i = 0; i < locations.length; i++) {
+      setDownloadState({ index: i + 1, total: locations.length });
+      const location = locations[i];
+      try {
+        await downloadLocationLabelImage(location, labelFilename(location));
+        // Small pause between downloads - firing several at once can make the browser
+        // treat it as a suspicious multi-download and block the rest behind a permission
+        // prompt.
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      } catch (err) {
+        setDownloadError(
+          `Failed on "${location.name}" (${i + 1} of ${locations.length}): ${
+            err instanceof Error ? err.message : "Unknown error"
+          }`,
+        );
+        break;
+      }
+    }
+    setDownloadState(null);
   }
 
   return (
     <Card className="print:hidden">
       <CardHeader>
-        <CardTitle className="text-base">Brady printer (Bluetooth)</CardTitle>
+        <CardTitle className="text-base">Brady printer</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {isConnected ? (
-            <Button type="button" variant="outline" size="sm" onClick={() => disconnect()}>
-              <BluetoothOff className="h-4 w-4" />
-              Disconnect
-            </Button>
-          ) : (
-            <Button type="button" variant="outline" size="sm" onClick={() => connect()} disabled={isConnecting}>
-              {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bluetooth className="h-4 w-4" />}
-              {isConnecting ? "Connecting..." : "Connect to printer"}
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadAll}
+            disabled={locations.length === 0 || downloadState !== null}
+          >
+            <Download className="h-4 w-4" />
+            {downloadState
+              ? `Downloading ${downloadState.index}/${downloadState.total}...`
+              : `Download label image${locations.length === 1 ? "" : "s"}`}
+          </Button>
 
-          {isConnected && (
-            <Button
-              type="button"
-              size="sm"
-              onClick={handlePrintAll}
-              disabled={locations.length === 0 || printState !== null}
-            >
-              <Printer className="h-4 w-4" />
-              {printState ? `Printing ${printState.index}/${printState.total}...` : "Print via Brady printer"}
-            </Button>
+          {isSupportedBrowser && (
+            <>
+              {isConnected ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => disconnect()}>
+                  <BluetoothOff className="h-4 w-4" />
+                  Disconnect
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" size="sm" onClick={() => connect()} disabled={isConnecting}>
+                  {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bluetooth className="h-4 w-4" />}
+                  {isConnecting ? "Connecting..." : "Connect to printer"}
+                </Button>
+              )}
+
+              {isConnected && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handlePrintAll}
+                  disabled={locations.length === 0 || printState !== null}
+                >
+                  <Printer className="h-4 w-4" />
+                  {printState ? `Printing ${printState.index}/${printState.total}...` : "Print via Brady printer"}
+                </Button>
+              )}
+            </>
           )}
         </div>
+
+        <p className="text-xs text-muted-foreground">
+          {isSupportedBrowser
+            ? "Connect a paired Brady printer to print directly, or download label images to print elsewhere (e.g. with Brady's own software) if no printer is connected here."
+            : "This browser doesn't support direct Bluetooth printing (use Chrome, Edge, or Bluefy on iOS for that) - but you can still download label images to print with Brady's own software on another device."}
+        </p>
 
         {isConnected && (
           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground sm:grid-cols-4">
@@ -112,8 +149,8 @@ export function BradyPrinterPanel({ locations }: { locations: Location[] }) {
           </dl>
         )}
 
-        {(connectError || info.errorMessage || printError) && (
-          <p className="text-sm text-destructive">{printError || connectError || info.errorMessage}</p>
+        {(connectError || info.errorMessage || printError || downloadError) && (
+          <p className="text-sm text-destructive">{downloadError || printError || connectError || info.errorMessage}</p>
         )}
       </CardContent>
     </Card>

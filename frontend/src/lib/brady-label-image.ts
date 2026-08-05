@@ -10,11 +10,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-// Brady's printBitmap accepts an HTMLImageElement only (not a canvas/data URL directly),
-// and itself resizes-to-fit while preserving aspect ratio - so this doesn't need to match
-// the connected printer's exact label dimensions, just render at a reasonable resolution
-// with roughly the same square-ish proportions as the browser-print label.
-export async function renderLocationLabelImage(location: Location): Promise<HTMLImageElement> {
+async function renderLocationLabelCanvas(location: Location): Promise<HTMLCanvasElement> {
   const size = 600;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -37,5 +33,38 @@ export async function renderLocationLabelImage(location: Location): Promise<HTML
   ctx.font = "28px sans-serif";
   ctx.fillText(location.name, size / 2, size * 0.94);
 
+  return canvas;
+}
+
+// Brady's printBitmap accepts an HTMLImageElement only (not a canvas/data URL directly),
+// and itself resizes-to-fit while preserving aspect ratio - so this doesn't need to match
+// the connected printer's exact label dimensions, just render at a reasonable resolution
+// with roughly the same square-ish proportions as the browser-print label.
+export async function renderLocationLabelImage(location: Location): Promise<HTMLImageElement> {
+  const canvas = await renderLocationLabelCanvas(location);
   return loadImage(canvas.toDataURL("image/png"));
+}
+
+// Triggers a real file download of the label as a PNG, so it can be sent to someone with
+// physical access to a Brady printer (via Brady's own software, or this app on their own
+// device). Deliberately uses a Blob + object URL rather than a data: URL for the anchor's
+// href - Chrome silently drops data: URL downloads triggered via a synthetic anchor click
+// in some versions/contexts, while Blob URLs are the standard, reliable mechanism for
+// programmatic downloads.
+export async function downloadLocationLabelImage(location: Location, filename: string): Promise<void> {
+  const canvas = await renderLocationLabelCanvas(location);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob) throw new Error("Could not generate the label image");
+
+  const url = URL.createObjectURL(blob);
+  try {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
