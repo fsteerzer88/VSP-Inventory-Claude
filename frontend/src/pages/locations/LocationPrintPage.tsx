@@ -4,6 +4,7 @@ import { useQueries } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { locationQrCodeUrl } from "@/api/locations";
 import { Button } from "@/components/ui/button";
+import { BradyPrinterPanel } from "@/components/locations/BradyPrinterPanel";
 import type { Location } from "@/types/models";
 import { Printer } from "lucide-react";
 
@@ -55,6 +56,8 @@ export function LocationPrintPage() {
       </label>
 
       {ids.length === 0 && <p className="text-sm text-muted-foreground print:hidden">No locations selected.</p>}
+
+      <BradyPrinterPanel locations={locations} />
 
       <div className="grid grid-cols-3 gap-4 print:grid-cols-3 print:gap-2">
         {locations.map((location) => (

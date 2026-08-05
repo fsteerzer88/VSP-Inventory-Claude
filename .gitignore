@@ -6,6 +6,12 @@ dist/
 # Backend
 backend/data/
 
+# Vendor SDK - proprietary/licensed, installed via npm instead (see
+# frontend/package.json). Never commit Brady's distributed files directly:
+# this repo is public and their license restricts redistribution.
+/BradySdk-Web/
+/BradySdk-Web.zip
+
 # Editor/OS
 .DS_Store
 Thumbs.db
