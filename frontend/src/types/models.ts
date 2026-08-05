@@ -17,6 +17,9 @@ export interface Location {
   fullCode?: string;
   description: string | null;
   parentLocationId: string | null;
+  // Present (nested, up to 5 levels) on responses from GET /locations, /locations/:id,
+  // and /locations/lookup - absent elsewhere (e.g. embedded in an InventoryItem/Product).
+  parentLocation?: Location | null;
   isActive?: boolean;
   createdBy: string | null;
   createdAt: string;
