@@ -1,5 +1,6 @@
 import { locationQrCodeUrl } from "@/api/locations";
-import type { Location } from "@/types/models";
+import { productDataMatrixUrl } from "@/api/products";
+import type { Location, Product } from "@/types/models";
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -10,7 +11,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function renderLocationLabelCanvas(location: Location): Promise<HTMLCanvasElement> {
+async function renderLabelCanvas(codeImageUrl: string, primaryText: string, secondaryText: string): Promise<HTMLCanvasElement> {
   const size = 600;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -21,17 +22,17 @@ async function renderLocationLabelCanvas(location: Location): Promise<HTMLCanvas
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, size, size);
 
-  const qrImage = await loadImage(locationQrCodeUrl(location.id));
-  const qrSize = size * 0.7;
-  ctx.drawImage(qrImage, (size - qrSize) / 2, size * 0.04, qrSize, qrSize);
+  const codeImage = await loadImage(codeImageUrl);
+  const codeSize = size * 0.7;
+  ctx.drawImage(codeImage, (size - codeSize) / 2, size * 0.04, codeSize, codeSize);
 
   ctx.fillStyle = "#000000";
   ctx.textAlign = "center";
   ctx.font = "bold 48px monospace";
-  ctx.fillText(location.fullCode ?? location.code, size / 2, size * 0.86);
+  ctx.fillText(primaryText, size / 2, size * 0.86);
 
   ctx.font = "28px sans-serif";
-  ctx.fillText(location.name, size / 2, size * 0.94);
+  ctx.fillText(secondaryText, size / 2, size * 0.94);
 
   return canvas;
 }
@@ -40,8 +41,8 @@ async function renderLocationLabelCanvas(location: Location): Promise<HTMLCanvas
 // and itself resizes-to-fit while preserving aspect ratio - so this doesn't need to match
 // the connected printer's exact label dimensions, just render at a reasonable resolution
 // with roughly the same square-ish proportions as the browser-print label.
-export async function renderLocationLabelImage(location: Location): Promise<HTMLImageElement> {
-  const canvas = await renderLocationLabelCanvas(location);
+async function renderLabelImage(codeImageUrl: string, primaryText: string, secondaryText: string): Promise<HTMLImageElement> {
+  const canvas = await renderLabelCanvas(codeImageUrl, primaryText, secondaryText);
   return loadImage(canvas.toDataURL("image/png"));
 }
 
@@ -51,8 +52,13 @@ export async function renderLocationLabelImage(location: Location): Promise<HTML
 // href - Chrome silently drops data: URL downloads triggered via a synthetic anchor click
 // in some versions/contexts, while Blob URLs are the standard, reliable mechanism for
 // programmatic downloads.
-export async function downloadLocationLabelImage(location: Location, filename: string): Promise<void> {
-  const canvas = await renderLocationLabelCanvas(location);
+async function downloadLabelImage(
+  codeImageUrl: string,
+  primaryText: string,
+  secondaryText: string,
+  filename: string,
+): Promise<void> {
+  const canvas = await renderLabelCanvas(codeImageUrl, primaryText, secondaryText);
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
   if (!blob) throw new Error("Could not generate the label image");
 
@@ -67,4 +73,29 @@ export async function downloadLocationLabelImage(location: Location, filename: s
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+export function renderLocationLabelImage(location: Location): Promise<HTMLImageElement> {
+  return renderLabelImage(locationQrCodeUrl(location.id), location.fullCode ?? location.code, location.name);
+}
+
+export function downloadLocationLabelImage(location: Location, filename: string): Promise<void> {
+  return downloadLabelImage(locationQrCodeUrl(location.id), location.fullCode ?? location.code, location.name, filename);
+}
+
+export function renderProductLabelImage(product: Product): Promise<HTMLImageElement> {
+  return renderLabelImage(
+    productDataMatrixUrl(product.id),
+    product.sku || product.partNumber || product.name,
+    product.name,
+  );
+}
+
+export function downloadProductLabelImage(product: Product, filename: string): Promise<void> {
+  return downloadLabelImage(
+    productDataMatrixUrl(product.id),
+    product.sku || product.partNumber || product.name,
+    product.name,
+    filename,
+  );
 }

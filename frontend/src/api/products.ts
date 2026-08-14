@@ -100,3 +100,7 @@ export function useUploadProductImage() {
 export function productImageUrl(productId: string, imageId: string): string {
   return `/api/products/${productId}/images/${imageId}`;
 }
+
+export function productDataMatrixUrl(id: string): string {
+  return `/api/products/${id}/datamatrix.svg`;
+}

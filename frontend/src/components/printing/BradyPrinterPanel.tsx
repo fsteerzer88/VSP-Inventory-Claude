@@ -2,16 +2,21 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBradyPrinter } from "@/hooks/useBradyPrinter";
-import { renderLocationLabelImage, downloadLocationLabelImage } from "@/lib/brady-label-image";
-import type { Location } from "@/types/models";
 import { Bluetooth, BluetoothOff, Download, Loader2, Printer } from "lucide-react";
 
-function labelFilename(location: Location): string {
-  const safe = (location.fullCode ?? location.code).replace(/[^a-zA-Z0-9_-]/g, "_");
-  return `location-${safe}.png`;
-}
-
-export function BradyPrinterPanel({ locations }: { locations: Location[] }) {
+export function BradyPrinterPanel<T>({
+  items,
+  itemName,
+  renderLabelImage,
+  downloadLabelImage,
+  labelFilename,
+}: {
+  items: T[];
+  itemName: (item: T) => string;
+  renderLabelImage: (item: T) => Promise<HTMLImageElement>;
+  downloadLabelImage: (item: T, filename: string) => Promise<void>;
+  labelFilename: (item: T) => string;
+}) {
   const { isSupportedBrowser, isConnected, isConnecting, connectError, info, connect, disconnect, printImage } =
     useBradyPrinter();
   const [printState, setPrintState] = useState<{ index: number; total: number } | null>(null);
@@ -21,15 +26,15 @@ export function BradyPrinterPanel({ locations }: { locations: Location[] }) {
 
   async function handlePrintAll() {
     setPrintError(null);
-    for (let i = 0; i < locations.length; i++) {
-      setPrintState({ index: i + 1, total: locations.length });
-      const location = locations[i];
+    for (let i = 0; i < items.length; i++) {
+      setPrintState({ index: i + 1, total: items.length });
+      const item = items[i];
       try {
-        const image = await renderLocationLabelImage(location);
+        const image = await renderLabelImage(item);
         await printImage(image);
       } catch (err) {
         setPrintError(
-          `Failed on "${location.name}" (${i + 1} of ${locations.length}): ${
+          `Failed on "${itemName(item)}" (${i + 1} of ${items.length}): ${
             err instanceof Error ? err.message : "Unknown error"
           }`,
         );
@@ -41,18 +46,18 @@ export function BradyPrinterPanel({ locations }: { locations: Location[] }) {
 
   async function handleDownloadAll() {
     setDownloadError(null);
-    for (let i = 0; i < locations.length; i++) {
-      setDownloadState({ index: i + 1, total: locations.length });
-      const location = locations[i];
+    for (let i = 0; i < items.length; i++) {
+      setDownloadState({ index: i + 1, total: items.length });
+      const item = items[i];
       try {
-        await downloadLocationLabelImage(location, labelFilename(location));
+        await downloadLabelImage(item, labelFilename(item));
         // Small pause between downloads - firing several at once can make the browser
         // treat it as a suspicious multi-download and block the rest behind a permission
         // prompt.
         await new Promise((resolve) => setTimeout(resolve, 300));
       } catch (err) {
         setDownloadError(
-          `Failed on "${location.name}" (${i + 1} of ${locations.length}): ${
+          `Failed on "${itemName(item)}" (${i + 1} of ${items.length}): ${
             err instanceof Error ? err.message : "Unknown error"
           }`,
         );
@@ -74,12 +79,12 @@ export function BradyPrinterPanel({ locations }: { locations: Location[] }) {
             variant="outline"
             size="sm"
             onClick={handleDownloadAll}
-            disabled={locations.length === 0 || downloadState !== null}
+            disabled={items.length === 0 || downloadState !== null}
           >
             <Download className="h-4 w-4" />
             {downloadState
               ? `Downloading ${downloadState.index}/${downloadState.total}...`
-              : `Download label image${locations.length === 1 ? "" : "s"}`}
+              : `Download label image${items.length === 1 ? "" : "s"}`}
           </Button>
 
           {isSupportedBrowser && (
@@ -101,7 +106,7 @@ export function BradyPrinterPanel({ locations }: { locations: Location[] }) {
                   type="button"
                   size="sm"
                   onClick={handlePrintAll}
-                  disabled={locations.length === 0 || printState !== null}
+                  disabled={items.length === 0 || printState !== null}
                 >
                   <Printer className="h-4 w-4" />
                   {printState ? `Printing ${printState.index}/${printState.total}...` : "Print via Brady printer"}

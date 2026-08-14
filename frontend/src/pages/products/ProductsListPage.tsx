@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Package, SlidersHorizontal, X } from "lucide-react";
+import { Package, Printer, SlidersHorizontal, X } from "lucide-react";
 import type { Product } from "@/types/models";
 
 interface FacetOption {
@@ -69,6 +69,7 @@ export function ProductsListPage() {
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [selectedManufacturers, setSelectedManufacturers] = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const { data: products, isLoading } = useProducts(q || undefined);
 
   const categoryFacet = useMemo(() => buildFacet(products ?? [], "category"), [products]);
@@ -96,14 +97,38 @@ export function ProductsListPage() {
     setSelectedManufacturers(new Set());
   }
 
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
-        <Button variant="outline" size="sm" className="md:hidden" onClick={() => setFiltersOpen((v) => !v)}>
-          <SlidersHorizontal className="h-4 w-4" />
-          Filters{activeFilterCount > 0 && ` (${activeFilterCount})`}
-        </Button>
+        <div className="flex gap-2">
+          {selected.size === 0 ? (
+            <Button variant="outline" disabled>
+              <Printer className="h-4 w-4" />
+              Print selected (0)
+            </Button>
+          ) : (
+            <Button variant="outline" asChild>
+              <Link to={`/products/print?ids=${Array.from(selected).join(",")}`}>
+                <Printer className="h-4 w-4" />
+                Print selected ({selected.size})
+              </Link>
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="md:hidden" onClick={() => setFiltersOpen((v) => !v)}>
+            <SlidersHorizontal className="h-4 w-4" />
+            Filters{activeFilterCount > 0 && ` (${activeFilterCount})`}
+          </Button>
+        </div>
       </div>
 
       <Input
@@ -143,9 +168,16 @@ export function ProductsListPage() {
           {filtered.map((product) => {
             const primaryImage = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
             return (
-              <Link key={product.id} to={`/products/${product.id}`}>
-                <Card className="h-full">
-                  <CardContent className="flex gap-3 p-4">
+              <Card key={product.id} className="h-full">
+                <CardContent className="flex items-start gap-3 p-4">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(product.id)}
+                    onChange={() => toggleSelected(product.id)}
+                    className="mt-1 h-4 w-4 shrink-0"
+                    aria-label={`Select ${product.name}`}
+                  />
+                  <Link to={`/products/${product.id}`} className="flex min-w-0 flex-1 gap-3">
                     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
                       {primaryImage ? (
                         <img
@@ -163,9 +195,9 @@ export function ProductsListPage() {
                         {product.manufacturer ?? product.sku ?? product.barcode ?? "—"}
                       </p>
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                  </Link>
+                </CardContent>
+              </Card>
             );
           })}
           {!isLoading && filtered.length === 0 && (

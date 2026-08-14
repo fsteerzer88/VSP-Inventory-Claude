@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhotoCapture } from "@/components/camera/PhotoCapture";
 import { ApiError } from "@/api/client";
-import { ExternalLink, Package, Pencil, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, ExternalLink, Package, Pencil, Plus, Printer, Trash2, X } from "lucide-react";
 
 interface ProductFormState {
   name: string;
@@ -52,6 +52,8 @@ export function ProductDetailPage() {
   if (!product) return <p className="text-sm text-muted-foreground">Product not found.</p>;
 
   const primaryImage = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
+  const totalStock = product.inventoryItems?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const isLowStock = product.reorderThreshold != null && totalStock <= product.reorderThreshold;
 
   function startEdit() {
     setForm({
@@ -124,19 +126,38 @@ export function ProductDetailPage() {
             {product.sku && `· SKU ${product.sku}`} {product.barcode && `· ${product.barcode}`}
           </p>
         </div>
-        {isAdmin && !isEditing && (
+        {!isEditing && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={startEdit}>
-              <Pencil className="h-4 w-4" />
-              Edit
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/products/print?ids=${product.id}`}>
+                <Printer className="h-4 w-4" />
+                Print label
+              </Link>
             </Button>
-            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleteProduct.isPending}>
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </Button>
+            {isAdmin && (
+              <>
+                <Button variant="outline" size="sm" onClick={startEdit}>
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleteProduct.isPending}>
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              </>
+            )}
           </div>
         )}
       </div>
+
+      {isLowStock && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>
+            Low stock: {totalStock} in stock, at or below the reorder threshold of {product.reorderThreshold}.
+          </span>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

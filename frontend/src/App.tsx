@@ -10,6 +10,7 @@ import { InventoryListPage } from "@/pages/inventory/InventoryListPage";
 import { InventoryDetailPage } from "@/pages/inventory/InventoryDetailPage";
 import { ProductsListPage } from "@/pages/products/ProductsListPage";
 import { ProductDetailPage } from "@/pages/products/ProductDetailPage";
+import { ProductPrintPage } from "@/pages/products/ProductPrintPage";
 import { LocationsListPage } from "@/pages/locations/LocationsListPage";
 import { LocationDetailPage } from "@/pages/locations/LocationDetailPage";
 import { LocationFormPage } from "@/pages/locations/LocationFormPage";
@@ -30,6 +31,7 @@ function App() {
           <Route path="/inventory" element={<InventoryListPage />} />
           <Route path="/inventory/:id" element={<InventoryDetailPage />} />
           <Route path="/products" element={<ProductsListPage />} />
+          <Route path="/products/print" element={<ProductPrintPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/locations" element={<LocationsListPage />} />
           <Route path="/locations/new" element={<LocationFormPage />} />
