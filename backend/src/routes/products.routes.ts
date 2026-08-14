@@ -8,6 +8,7 @@ export const productsRoutes = Router();
 productsRoutes.get("/", productsController.listProducts);
 productsRoutes.get("/lookup", productsController.lookupProductByBarcode);
 productsRoutes.get("/:id", productsController.getProduct);
+productsRoutes.get("/:id/datamatrix.svg", productsController.getProductDataMatrix);
 productsRoutes.post("/", productsController.createProduct);
 productsRoutes.patch("/:id", requireRole("admin"), productsController.updateProduct);
 productsRoutes.delete("/:id", requireRole("admin"), productsController.deleteProduct);

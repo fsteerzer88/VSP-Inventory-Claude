@@ -5,6 +5,7 @@ import { prisma } from "../config/prisma";
 import { HttpError } from "../middleware/error.middleware";
 import { deleteImageFile } from "../services/image-storage.service";
 import { LOCATION_ANCESTOR_INCLUDE, withFullCode } from "../services/location-code.service";
+import { generateProductDataMatrixSvg } from "../services/datamatrix.service";
 import { env } from "../config/env";
 
 const SOURCE_INCLUDE = {
@@ -64,6 +65,13 @@ export async function lookupProductByBarcode(req: Request, res: Response) {
     return;
   }
   res.json(product);
+}
+
+export async function getProductDataMatrix(req: Request, res: Response) {
+  const product = await prisma.product.findUnique({ where: { id: req.params.id as string } });
+  if (!product) throw new HttpError(404, "Product not found");
+  const svg = generateProductDataMatrixSvg(product.id);
+  res.type("image/svg+xml").send(svg);
 }
 
 export async function createProduct(req: Request, res: Response) {

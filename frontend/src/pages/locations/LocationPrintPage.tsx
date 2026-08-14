@@ -4,9 +4,15 @@ import { useQueries } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { locationQrCodeUrl } from "@/api/locations";
 import { Button } from "@/components/ui/button";
-import { BradyPrinterPanel } from "@/components/locations/BradyPrinterPanel";
+import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
+import { renderLocationLabelImage, downloadLocationLabelImage } from "@/lib/brady-label-image";
 import type { Location } from "@/types/models";
 import { Printer } from "lucide-react";
+
+function labelFilename(location: Location): string {
+  const safe = (location.fullCode ?? location.code).replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `location-${safe}.png`;
+}
 
 // Walks the same nested parentLocation chain the backend already returns (used there to
 // build fullCode from each level's `code`) but joins `name` instead, so a label can read
@@ -57,7 +63,13 @@ export function LocationPrintPage() {
 
       {ids.length === 0 && <p className="text-sm text-muted-foreground print:hidden">No locations selected.</p>}
 
-      <BradyPrinterPanel locations={locations} />
+      <BradyPrinterPanel
+        items={locations}
+        itemName={(location) => location.name}
+        renderLabelImage={renderLocationLabelImage}
+        downloadLabelImage={downloadLocationLabelImage}
+        labelFilename={labelFilename}
+      />
 
       <div className="grid grid-cols-3 gap-4 print:grid-cols-3 print:gap-2">
         {locations.map((location) => (
