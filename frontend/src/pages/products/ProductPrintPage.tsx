@@ -46,21 +46,23 @@ export function ProductPrintPage() {
         labelFilename={labelFilename}
       />
 
-      <div className="grid grid-cols-3 gap-4 print:grid-cols-3 print:gap-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 print:grid-cols-2 print:gap-2">
         {products.map((product) => (
           <div
             key={product.id}
-            className="flex flex-col items-center gap-1 rounded-md border border-border p-3 text-center print:break-inside-avoid print:border-black"
+            className="flex items-center gap-3 rounded-md border border-border p-3 print:break-inside-avoid print:border-black"
           >
             <img
               src={productDataMatrixUrl(product.id)}
               alt={`Data Matrix code for ${product.name}`}
-              className="h-24 w-24"
+              className="h-16 w-16 shrink-0"
             />
-            <p className="font-mono text-base font-bold leading-tight print:text-black">
-              {product.sku || product.partNumber || product.name}
-            </p>
-            <p className="text-xs text-muted-foreground print:text-black">{product.name}</p>
+            <div className="min-w-0">
+              <p className="font-mono text-base font-bold leading-tight print:text-black">
+                {product.sku || product.partNumber || product.name}
+              </p>
+              <p className="text-xs text-muted-foreground print:text-black">{product.name}</p>
+            </div>
           </div>
         ))}
       </div>
