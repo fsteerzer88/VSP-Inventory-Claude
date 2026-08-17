@@ -8,6 +8,7 @@ import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
 import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
 import { renderLocationLabelImage, downloadLocationLabelImage, locationLabelCssSize } from "@/lib/brady-label-image";
 import { useLabelSizeSettings } from "@/lib/label-size";
+import { cn } from "@/lib/utils";
 import type { Location } from "@/types/models";
 import { Printer } from "lucide-react";
 
@@ -81,7 +82,10 @@ export function LocationPrintPage() {
         {locations.map((location) => (
           <div
             key={location.id}
-            className="flex flex-col items-center justify-center gap-1 overflow-hidden rounded-md border border-border p-3 text-center print:break-inside-avoid print:border-black"
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 overflow-hidden rounded-md border border-border text-center print:break-inside-avoid print:border-black",
+              cssSize ? "p-1" : "p-3",
+            )}
             style={cssSize ?? undefined}
           >
             <img

@@ -7,6 +7,7 @@ import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
 import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
 import { renderProductLabelImage, downloadProductLabelImage, productLabelCssSize } from "@/lib/brady-label-image";
 import { useLabelSizeSettings } from "@/lib/label-size";
+import { cn } from "@/lib/utils";
 import type { Product } from "@/types/models";
 import { Printer } from "lucide-react";
 
@@ -56,7 +57,10 @@ export function ProductPrintPage() {
         {products.map((product) => (
           <div
             key={product.id}
-            className="flex items-center gap-3 overflow-hidden rounded-md border border-border p-3 print:break-inside-avoid print:border-black"
+            className={cn(
+              "flex items-center gap-3 overflow-hidden rounded-md border border-border print:break-inside-avoid print:border-black",
+              cssSize ? "p-1" : "p-3",
+            )}
             style={cssSize ?? undefined}
           >
             <img
