@@ -4,7 +4,9 @@ import { api } from "@/api/client";
 import { productDataMatrixUrl } from "@/api/products";
 import { Button } from "@/components/ui/button";
 import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
-import { renderProductLabelImage, downloadProductLabelImage } from "@/lib/brady-label-image";
+import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
+import { renderProductLabelImage, downloadProductLabelImage, productLabelCssSize } from "@/lib/brady-label-image";
+import { useLabelSizeSettings } from "@/lib/label-size";
 import type { Product } from "@/types/models";
 import { Printer } from "lucide-react";
 
@@ -16,6 +18,8 @@ function labelFilename(product: Product): string {
 export function ProductPrintPage() {
   const [searchParams] = useSearchParams();
   const ids = (searchParams.get("ids") ?? "").split(",").filter(Boolean);
+  const [labelSize, setLabelSize] = useLabelSizeSettings();
+  const cssSize = productLabelCssSize(labelSize);
 
   const results = useQueries({
     queries: ids.map((id) => ({
@@ -38,24 +42,27 @@ export function ProductPrintPage() {
 
       {ids.length === 0 && <p className="text-sm text-muted-foreground print:hidden">No products selected.</p>}
 
+      <LabelSizeSettings value={labelSize} onChange={setLabelSize} />
+
       <BradyPrinterPanel
         items={products}
         itemName={(product) => product.name}
-        renderLabelImage={renderProductLabelImage}
-        downloadLabelImage={downloadProductLabelImage}
+        renderLabelImage={(product) => renderProductLabelImage(product, labelSize)}
+        downloadLabelImage={(product, filename) => downloadProductLabelImage(product, filename, labelSize)}
         labelFilename={labelFilename}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 print:grid-cols-2 print:gap-2">
+      <div className={cssSize ? "flex flex-wrap gap-4 print:gap-2" : "grid grid-cols-1 gap-4 sm:grid-cols-2 print:grid-cols-2 print:gap-2"}>
         {products.map((product) => (
           <div
             key={product.id}
-            className="flex items-center gap-3 rounded-md border border-border p-3 print:break-inside-avoid print:border-black"
+            className="flex items-center gap-3 overflow-hidden rounded-md border border-border p-3 print:break-inside-avoid print:border-black"
+            style={cssSize ?? undefined}
           >
             <img
               src={productDataMatrixUrl(product.id)}
               alt={`Data Matrix code for ${product.name}`}
-              className="h-16 w-16 shrink-0"
+              className={cssSize ? "h-full max-w-[40%] shrink-0 object-contain" : "h-16 w-16 shrink-0"}
             />
             <div className="min-w-0">
               <p className="font-mono text-base font-bold leading-tight print:text-black">

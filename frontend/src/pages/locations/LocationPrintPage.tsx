@@ -5,7 +5,9 @@ import { api } from "@/api/client";
 import { locationQrCodeUrl } from "@/api/locations";
 import { Button } from "@/components/ui/button";
 import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
-import { renderLocationLabelImage, downloadLocationLabelImage } from "@/lib/brady-label-image";
+import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
+import { renderLocationLabelImage, downloadLocationLabelImage, locationLabelCssSize } from "@/lib/brady-label-image";
+import { useLabelSizeSettings } from "@/lib/label-size";
 import type { Location } from "@/types/models";
 import { Printer } from "lucide-react";
 
@@ -31,6 +33,8 @@ export function LocationPrintPage() {
   const [searchParams] = useSearchParams();
   const ids = (searchParams.get("ids") ?? "").split(",").filter(Boolean);
   const [includeParentNames, setIncludeParentNames] = useState(false);
+  const [labelSize, setLabelSize] = useLabelSizeSettings();
+  const cssSize = locationLabelCssSize(labelSize);
 
   const results = useQueries({
     queries: ids.map((id) => ({
@@ -63,21 +67,28 @@ export function LocationPrintPage() {
 
       {ids.length === 0 && <p className="text-sm text-muted-foreground print:hidden">No locations selected.</p>}
 
+      <LabelSizeSettings value={labelSize} onChange={setLabelSize} />
+
       <BradyPrinterPanel
         items={locations}
         itemName={(location) => location.name}
-        renderLabelImage={renderLocationLabelImage}
-        downloadLabelImage={downloadLocationLabelImage}
+        renderLabelImage={(location) => renderLocationLabelImage(location, labelSize)}
+        downloadLabelImage={(location, filename) => downloadLocationLabelImage(location, filename, labelSize)}
         labelFilename={labelFilename}
       />
 
-      <div className="grid grid-cols-3 gap-4 print:grid-cols-3 print:gap-2">
+      <div className={cssSize ? "flex flex-wrap gap-4 print:gap-2" : "grid grid-cols-3 gap-4 print:grid-cols-3 print:gap-2"}>
         {locations.map((location) => (
           <div
             key={location.id}
-            className="flex flex-col items-center gap-1 rounded-md border border-border p-3 text-center print:break-inside-avoid print:border-black"
+            className="flex flex-col items-center justify-center gap-1 overflow-hidden rounded-md border border-border p-3 text-center print:break-inside-avoid print:border-black"
+            style={cssSize ?? undefined}
           >
-            <img src={locationQrCodeUrl(location.id)} alt={`QR code for ${location.name}`} className="h-24 w-24" />
+            <img
+              src={locationQrCodeUrl(location.id)}
+              alt={`QR code for ${location.name}`}
+              className={cssSize ? "max-h-full max-w-full object-contain" : "h-24 w-24"}
+            />
             <p className="font-mono text-base font-bold leading-tight print:text-black">
               {location.fullCode ?? location.code}
             </p>
