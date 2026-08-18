@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 
 export type LabelUnit = "mm" | "in";
+export type ZplDpi = 203 | 300;
 
 export interface LabelSizeSettings {
   unit: LabelUnit;
   maxWidthMm: number | null;
   maxHeightMm: number | null;
+  // Only used for ZPL export (Zebra printers) - the Brady/PNG/browser-print paths don't
+  // need a printer resolution, they render through the browser's own canvas/CSS engine.
+  zplDpi: ZplDpi;
 }
 
 const STORAGE_KEY = "vsp.labelSize.v1";
@@ -14,7 +18,7 @@ const MM_PER_INCH = 25.4;
 // output - independent of screen DPI, just a reasonable print-quality target.
 const PRINT_DPI = 300;
 
-const DEFAULT_SETTINGS: LabelSizeSettings = { unit: "mm", maxWidthMm: null, maxHeightMm: null };
+const DEFAULT_SETTINGS: LabelSizeSettings = { unit: "mm", maxWidthMm: null, maxHeightMm: null, zplDpi: 203 };
 
 export function mmToIn(mm: number): number {
   return mm / MM_PER_INCH;
@@ -47,8 +51,9 @@ export function useLabelSizeSettings() {
 
 // If only one of max width/height is set, the other side is derived from the layout's
 // natural (unconstrained) aspect ratio so the label keeps a sensible shape. Returns null
-// when neither bound is set, so callers can fall back to their own default size.
-function resolveDimensionsMm(
+// when neither bound is set, so callers can fall back to their own default size (exported
+// for the ZPL export path, which needs concrete mm dimensions with no "auto" option).
+export function resolveLabelDimensionsMm(
   settings: LabelSizeSettings,
   naturalAspect: number,
 ): { widthMm: number; heightMm: number } | null {
@@ -64,7 +69,7 @@ export function resolveCanvasSize(
   naturalAspect: number,
   defaultPx: { width: number; height: number },
 ): { width: number; height: number } {
-  const resolved = resolveDimensionsMm(settings, naturalAspect);
+  const resolved = resolveLabelDimensionsMm(settings, naturalAspect);
   if (!resolved) return defaultPx;
   return {
     width: Math.round((resolved.widthMm / MM_PER_INCH) * PRINT_DPI),
@@ -76,7 +81,25 @@ export function resolveCanvasSize(
 // on-screen/browser-print preview directly - no DPI conversion needed the way the
 // canvas/bitmap path requires.
 export function resolveCssSize(settings: LabelSizeSettings, naturalAspect: number): { width: string; height: string } | null {
-  const resolved = resolveDimensionsMm(settings, naturalAspect);
+  const resolved = resolveLabelDimensionsMm(settings, naturalAspect);
   if (!resolved) return null;
   return { width: `${resolved.widthMm}mm`, height: `${resolved.heightMm}mm` };
+}
+
+// ZPL needs concrete mm dimensions with no "auto" option (unlike the canvas/CSS paths,
+// which can fall back to a pixel default) - so when neither max width/height is set, this
+// derives an equivalent physical size from the same defaultPx used for the PNG/Brady output
+// (see brady-label-image.ts), keeping the ZPL default in step with the other print paths
+// rather than picking an unrelated constant.
+export function resolveDimensionsMmOrDefault(
+  settings: LabelSizeSettings,
+  naturalAspect: number,
+  defaultPx: { width: number; height: number },
+): { widthMm: number; heightMm: number } {
+  const resolved = resolveLabelDimensionsMm(settings, naturalAspect);
+  if (resolved) return resolved;
+  return {
+    widthMm: (defaultPx.width / PRINT_DPI) * MM_PER_INCH,
+    heightMm: (defaultPx.height / PRINT_DPI) * MM_PER_INCH,
+  };
 }

@@ -6,7 +6,10 @@ import { HttpError } from "../middleware/error.middleware";
 import { deleteImageFile } from "../services/image-storage.service";
 import { LOCATION_ANCESTOR_INCLUDE, withFullCode } from "../services/location-code.service";
 import { generateProductDataMatrixSvg } from "../services/datamatrix.service";
+import { buildProductZpl, parseZplLabelSize } from "../services/zpl.service";
 import { env } from "../config/env";
+
+const MAX_ZPL_LABELS = 200;
 
 const SOURCE_INCLUDE = {
   sources: {
@@ -72,6 +75,31 @@ export async function getProductDataMatrix(req: Request, res: Response) {
   if (!product) throw new HttpError(404, "Product not found");
   const svg = generateProductDataMatrixSvg(product.id);
   res.type("image/svg+xml").send(svg);
+}
+
+export async function getProductsZpl(req: Request, res: Response) {
+  const { ids } = req.query as { ids?: string };
+  const idList = (ids ?? "").split(",").filter(Boolean);
+  if (idList.length === 0) throw new HttpError(400, "ids query param is required");
+  if (idList.length > MAX_ZPL_LABELS) {
+    throw new HttpError(400, `Cannot generate more than ${MAX_ZPL_LABELS} labels at once`);
+  }
+
+  let size;
+  try {
+    size = parseZplLabelSize(req.query as Record<string, unknown>);
+  } catch (err) {
+    throw new HttpError(400, err instanceof Error ? err.message : "Invalid label size");
+  }
+
+  const products = await prisma.product.findMany({ where: { id: { in: idList } } });
+  if (products.length === 0) throw new HttpError(404, "No matching products found");
+
+  const zpl = products.map((product) =>
+    buildProductZpl(product.id, product.sku || product.partNumber || product.name, product.name, size),
+  );
+
+  res.type("text/plain").header("Content-Disposition", 'attachment; filename="product-labels.zpl"').send(zpl.join("\n"));
 }
 
 export async function createProduct(req: Request, res: Response) {

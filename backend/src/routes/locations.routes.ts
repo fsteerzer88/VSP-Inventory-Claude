@@ -5,6 +5,7 @@ export const locationsRoutes = Router();
 
 locationsRoutes.get("/", locationsController.listLocations);
 locationsRoutes.get("/lookup", locationsController.lookupLocation);
+locationsRoutes.get("/zpl", locationsController.getLocationsZpl);
 locationsRoutes.get("/:id", locationsController.getLocation);
 locationsRoutes.get("/:id/qrcode.svg", locationsController.getLocationQrCode);
 locationsRoutes.post("/", locationsController.createLocation);

@@ -5,8 +5,10 @@ import { productDataMatrixUrl } from "@/api/products";
 import { Button } from "@/components/ui/button";
 import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
 import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
+import { ZplExportButton } from "@/components/printing/ZplExportButton";
 import { renderProductLabelImage, downloadProductLabelImage, productLabelCssSize } from "@/lib/brady-label-image";
 import { useLabelSizeSettings } from "@/lib/label-size";
+import { downloadProductsZpl } from "@/lib/zpl-export";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/types/models";
 import { Printer } from "lucide-react";
@@ -35,10 +37,16 @@ export function ProductPrintPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <h1 className="text-2xl font-semibold tracking-tight">Print labels</h1>
-        <Button onClick={() => window.print()} disabled={products.length === 0}>
-          <Printer className="h-4 w-4" />
-          Print
-        </Button>
+        <div className="flex items-center gap-2">
+          <ZplExportButton
+            disabled={products.length === 0}
+            onDownload={() => downloadProductsZpl(products, labelSize)}
+          />
+          <Button onClick={() => window.print()} disabled={products.length === 0}>
+            <Printer className="h-4 w-4" />
+            Print
+          </Button>
+        </div>
       </div>
 
       {ids.length === 0 && <p className="text-sm text-muted-foreground print:hidden">No products selected.</p>}

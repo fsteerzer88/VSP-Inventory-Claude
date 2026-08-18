@@ -16,6 +16,7 @@ import { LocationDetailPage } from "@/pages/locations/LocationDetailPage";
 import { LocationFormPage } from "@/pages/locations/LocationFormPage";
 import { LocationPrintPage } from "@/pages/locations/LocationPrintPage";
 import { LocationsBulkImportPage } from "@/pages/locations/LocationsBulkImportPage";
+import { LocationShortLinkPage } from "@/pages/locations/LocationShortLinkPage";
 import { UsersAdminPage } from "@/pages/users/UsersAdminPage";
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
           <Route path="/locations/print" element={<LocationPrintPage />} />
           <Route path="/locations/:id" element={<LocationDetailPage />} />
           <Route path="/locations/:id/edit" element={<LocationFormPage />} />
+          <Route path="/l/:code" element={<LocationShortLinkPage />} />
           <Route element={<RequireAuth adminOnly />}>
             <Route path="/users" element={<UsersAdminPage />} />
           </Route>

@@ -29,11 +29,13 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines;
 }
 
-const STACKED_DEFAULT_PX = { width: 600, height: 600 };
-const STACKED_ASPECT = STACKED_DEFAULT_PX.width / STACKED_DEFAULT_PX.height;
+// Exported so the ZPL export path (zpl-export.ts) can fall back to the same default label
+// shape/size (converted to mm) when the user hasn't set an explicit max width/height.
+export const STACKED_DEFAULT_PX = { width: 600, height: 600 };
+export const STACKED_ASPECT = STACKED_DEFAULT_PX.width / STACKED_DEFAULT_PX.height;
 
-const SIDE_BY_SIDE_DEFAULT_PX = { width: 720, height: 320 };
-const SIDE_BY_SIDE_ASPECT = SIDE_BY_SIDE_DEFAULT_PX.width / SIDE_BY_SIDE_DEFAULT_PX.height;
+export const SIDE_BY_SIDE_DEFAULT_PX = { width: 720, height: 320 };
+export const SIDE_BY_SIDE_ASPECT = SIDE_BY_SIDE_DEFAULT_PX.width / SIDE_BY_SIDE_DEFAULT_PX.height;
 
 // Used for location labels: the code on top, text centered below. All positioning is
 // proportional to the canvas's own width/height (rather than fixed pixel values) so a

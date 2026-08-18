@@ -7,6 +7,7 @@ export const productsRoutes = Router();
 
 productsRoutes.get("/", productsController.listProducts);
 productsRoutes.get("/lookup", productsController.lookupProductByBarcode);
+productsRoutes.get("/zpl", productsController.getProductsZpl);
 productsRoutes.get("/:id", productsController.getProduct);
 productsRoutes.get("/:id/datamatrix.svg", productsController.getProductDataMatrix);
 productsRoutes.post("/", productsController.createProduct);
