@@ -6,8 +6,10 @@ import { locationQrCodeUrl } from "@/api/locations";
 import { Button } from "@/components/ui/button";
 import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
 import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
+import { ZplExportButton } from "@/components/printing/ZplExportButton";
 import { renderLocationLabelImage, downloadLocationLabelImage, locationLabelCssSize } from "@/lib/brady-label-image";
 import { useLabelSizeSettings } from "@/lib/label-size";
+import { downloadLocationsZpl } from "@/lib/zpl-export";
 import { cn } from "@/lib/utils";
 import type { Location } from "@/types/models";
 import { Printer } from "lucide-react";
@@ -50,10 +52,16 @@ export function LocationPrintPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <h1 className="text-2xl font-semibold tracking-tight">Print labels</h1>
-        <Button onClick={() => window.print()} disabled={locations.length === 0}>
-          <Printer className="h-4 w-4" />
-          Print
-        </Button>
+        <div className="flex items-center gap-2">
+          <ZplExportButton
+            disabled={locations.length === 0}
+            onDownload={() => downloadLocationsZpl(locations, labelSize)}
+          />
+          <Button onClick={() => window.print()} disabled={locations.length === 0}>
+            <Printer className="h-4 w-4" />
+            Print
+          </Button>
+        </div>
       </div>
 
       <label className="flex w-fit items-center gap-2 text-sm print:hidden">

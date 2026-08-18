@@ -2,7 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { inToMm, mmToIn, type LabelSizeSettings as LabelSizeSettingsValue, type LabelUnit } from "@/lib/label-size";
+import {
+  inToMm,
+  mmToIn,
+  type LabelSizeSettings as LabelSizeSettingsValue,
+  type LabelUnit,
+  type ZplDpi,
+} from "@/lib/label-size";
 
 function formatForUnit(mm: number, unit: LabelUnit): string {
   const value = unit === "mm" ? mm : mmToIn(mm);
@@ -28,6 +34,10 @@ export function LabelSizeSettings({
 
   function setUnit(unit: LabelUnit) {
     onChange({ ...value, unit });
+  }
+
+  function setZplDpi(zplDpi: ZplDpi) {
+    onChange({ ...value, zplDpi });
   }
 
   return (
@@ -82,13 +92,26 @@ export function LabelSizeSettings({
               Clear
             </Button>
           )}
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Zebra printer DPI (ZPL export)</Label>
+            <div className="flex gap-1">
+              <Button type="button" variant={value.zplDpi === 203 ? "default" : "outline"} size="sm" onClick={() => setZplDpi(203)}>
+                203 dpi
+              </Button>
+              <Button type="button" variant={value.zplDpi === 300 ? "default" : "outline"} size="sm" onClick={() => setZplDpi(300)}>
+                300 dpi
+              </Button>
+            </div>
+          </div>
         </div>
 
         <p className="text-xs text-muted-foreground">
           Leave both blank to use the default label shape. Set one to scale the other automatically, or set both to fit
           the label inside that exact box. This sets the physical size for downloaded/browser-printed labels, and the
           aspect ratio for direct Brady printing (actual Brady print size is set by the label stock loaded in the
-          printer).
+          printer). The DPI setting only affects ZPL export - match it to your Zebra printer's print head resolution
+          (check the printer's spec sheet or configuration label; 203 dpi is the more common default).
         </p>
       </CardContent>
     </Card>

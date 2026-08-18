@@ -2,7 +2,10 @@ import type { Request, Response } from "express";
 import { prisma } from "../config/prisma";
 import { HttpError } from "../middleware/error.middleware";
 import { generateLocationQrSvg } from "../services/qrcode.service";
+import { buildLocationZpl, parseZplLabelSize } from "../services/zpl.service";
 import { LOCATION_ANCESTOR_INCLUDE as ANCESTOR_INCLUDE, withFullCode } from "../services/location-code.service";
+
+const MAX_ZPL_LABELS = 200;
 
 export async function listLocations(req: Request, res: Response) {
   const { q } = req.query as { q?: string };
@@ -201,8 +204,37 @@ export async function deleteLocation(req: Request, res: Response) {
 }
 
 export async function getLocationQrCode(req: Request, res: Response) {
-  const location = await prisma.location.findUnique({ where: { id: req.params.id as string } });
+  const location = await prisma.location.findUnique({
+    where: { id: req.params.id as string },
+    include: ANCESTOR_INCLUDE,
+  });
   if (!location) throw new HttpError(404, "Location not found");
-  const svg = await generateLocationQrSvg(location.id);
+  const svg = await generateLocationQrSvg(withFullCode(location).fullCode);
   res.type("image/svg+xml").send(svg);
+}
+
+export async function getLocationsZpl(req: Request, res: Response) {
+  const { ids } = req.query as { ids?: string };
+  const idList = (ids ?? "").split(",").filter(Boolean);
+  if (idList.length === 0) throw new HttpError(400, "ids query param is required");
+  if (idList.length > MAX_ZPL_LABELS) {
+    throw new HttpError(400, `Cannot generate more than ${MAX_ZPL_LABELS} labels at once`);
+  }
+
+  let size;
+  try {
+    size = parseZplLabelSize(req.query as Record<string, unknown>);
+  } catch (err) {
+    throw new HttpError(400, err instanceof Error ? err.message : "Invalid label size");
+  }
+
+  const locations = await prisma.location.findMany({ where: { id: { in: idList } }, include: ANCESTOR_INCLUDE });
+  if (locations.length === 0) throw new HttpError(404, "No matching locations found");
+
+  const zpl = locations.map((location) => {
+    const withCode = withFullCode(location);
+    return buildLocationZpl(withCode.fullCode, location.name, size);
+  });
+
+  res.type("text/plain").header("Content-Disposition", 'attachment; filename="location-labels.zpl"').send(zpl.join("\n"));
 }
