@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 
 export type LabelUnit = "mm" | "in";
 export type ZplDpi = 203 | 300;
@@ -93,6 +94,31 @@ export function resolveCssSize(settings: LabelSizeSettings, naturalAspect: numbe
   const resolved = resolveLabelDimensionsMm(settings, naturalAspect);
   if (!resolved) return null;
   return { width: `${resolved.widthMm}mm`, height: `${resolved.heightMm}mm` };
+}
+
+// Mirrors the ZPL export's rotation (see zpl.service.ts) for the browser-print/on-screen
+// preview path, which has no printer resolution or field coordinates to transform - just an
+// outer box sized to the swapped (rotated) footprint, with the original-size content
+// centered and rotated 90° inside it. Centering before rotating means a W×H box always
+// exactly fills its rotated H×W parent with no manual offset math. Returns null when no
+// explicit label size is set (nothing to swap) or rotation isn't enabled, so callers can
+// fall back to rendering the label unrotated.
+export function rotateCssBoxStyles(
+  cssSize: { width: string; height: string } | null,
+  rotate: boolean,
+): { outer: CSSProperties; inner: CSSProperties } | null {
+  if (!rotate || !cssSize) return null;
+  return {
+    outer: { position: "relative", width: cssSize.height, height: cssSize.width },
+    inner: {
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      width: cssSize.width,
+      height: cssSize.height,
+      transform: "translate(-50%, -50%) rotate(90deg)",
+    },
+  };
 }
 
 // ZPL needs concrete mm dimensions with no "auto" option (unlike the canvas/CSS paths,

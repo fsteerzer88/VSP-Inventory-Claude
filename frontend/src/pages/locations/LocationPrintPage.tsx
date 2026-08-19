@@ -8,7 +8,7 @@ import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
 import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
 import { ZplExportButton } from "@/components/printing/ZplExportButton";
 import { renderLocationLabelImage, downloadLocationLabelImage, locationLabelCssSize } from "@/lib/brady-label-image";
-import { useLabelSizeSettings } from "@/lib/label-size";
+import { rotateCssBoxStyles, useLabelSizeSettings } from "@/lib/label-size";
 import { downloadLocationsZpl } from "@/lib/zpl-export";
 import { cn } from "@/lib/utils";
 import type { Location } from "@/types/models";
@@ -38,6 +38,7 @@ export function LocationPrintPage() {
   const [includeParentNames, setIncludeParentNames] = useState(false);
   const [labelSize, setLabelSize] = useLabelSizeSettings();
   const cssSize = locationLabelCssSize(labelSize);
+  const rotated = rotateCssBoxStyles(cssSize, labelSize.zplRotate);
 
   const results = useQueries({
     queries: ids.map((id) => ({
@@ -87,28 +88,36 @@ export function LocationPrintPage() {
       />
 
       <div className={cssSize ? "flex flex-wrap gap-4 print:gap-2" : "grid grid-cols-3 gap-4 print:grid-cols-3 print:gap-2"}>
-        {locations.map((location) => (
-          <div
-            key={location.id}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 overflow-hidden rounded-md border border-border text-center print:break-inside-avoid print:border-black",
-              cssSize ? "p-1" : "p-3",
-            )}
-            style={cssSize ?? undefined}
-          >
-            <img
-              src={locationQrCodeUrl(location.id)}
-              alt={`QR code for ${location.name}`}
-              className={cssSize ? "max-h-full max-w-full object-contain" : "h-24 w-24"}
-            />
-            <p className="font-mono text-base font-bold leading-tight print:text-black">
-              {location.fullCode ?? location.code}
-            </p>
-            <p className="text-xs text-muted-foreground print:text-black">
-              {includeParentNames ? buildFullName(location) : location.name}
-            </p>
-          </div>
-        ))}
+        {locations.map((location) => {
+          const card = (
+            <div
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 overflow-hidden rounded-md border border-border text-center print:break-inside-avoid print:border-black",
+                cssSize ? "p-1" : "p-3",
+              )}
+              style={rotated ? rotated.inner : (cssSize ?? undefined)}
+            >
+              <img
+                src={locationQrCodeUrl(location.id)}
+                alt={`QR code for ${location.name}`}
+                className={cssSize ? "max-h-full max-w-full object-contain" : "h-24 w-24"}
+              />
+              <p className="font-mono text-base font-bold leading-tight print:text-black">
+                {location.fullCode ?? location.code}
+              </p>
+              <p className="text-xs text-muted-foreground print:text-black">
+                {includeParentNames ? buildFullName(location) : location.name}
+              </p>
+            </div>
+          );
+
+          if (!rotated) return <div key={location.id}>{card}</div>;
+          return (
+            <div key={location.id} className="print:break-inside-avoid" style={rotated.outer}>
+              {card}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

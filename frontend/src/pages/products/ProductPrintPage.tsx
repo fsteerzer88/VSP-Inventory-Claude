@@ -7,7 +7,7 @@ import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
 import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
 import { ZplExportButton } from "@/components/printing/ZplExportButton";
 import { renderProductLabelImage, downloadProductLabelImage, productLabelCssSize } from "@/lib/brady-label-image";
-import { useLabelSizeSettings } from "@/lib/label-size";
+import { rotateCssBoxStyles, useLabelSizeSettings } from "@/lib/label-size";
 import { downloadProductsZpl } from "@/lib/zpl-export";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/types/models";
@@ -23,6 +23,7 @@ export function ProductPrintPage() {
   const ids = (searchParams.get("ids") ?? "").split(",").filter(Boolean);
   const [labelSize, setLabelSize] = useLabelSizeSettings();
   const cssSize = productLabelCssSize(labelSize);
+  const rotated = rotateCssBoxStyles(cssSize, labelSize.zplRotate);
 
   const results = useQueries({
     queries: ids.map((id) => ({
@@ -62,28 +63,36 @@ export function ProductPrintPage() {
       />
 
       <div className={cssSize ? "flex flex-wrap gap-4 print:gap-2" : "grid grid-cols-1 gap-4 sm:grid-cols-2 print:grid-cols-2 print:gap-2"}>
-        {products.map((product) => (
-          <div
-            key={product.id}
-            className={cn(
-              "flex items-center gap-3 overflow-hidden rounded-md border border-border print:break-inside-avoid print:border-black",
-              cssSize ? "p-1" : "p-3",
-            )}
-            style={cssSize ?? undefined}
-          >
-            <img
-              src={productDataMatrixUrl(product.id)}
-              alt={`Data Matrix code for ${product.name}`}
-              className={cssSize ? "h-full max-w-[40%] shrink-0 object-contain" : "h-16 w-16 shrink-0"}
-            />
-            <div className="min-w-0">
-              <p className="font-mono text-base font-bold leading-tight print:text-black">
-                {product.sku || product.partNumber || product.name}
-              </p>
-              <p className="text-xs text-muted-foreground print:text-black">{product.name}</p>
+        {products.map((product) => {
+          const card = (
+            <div
+              className={cn(
+                "flex items-center gap-3 overflow-hidden rounded-md border border-border print:break-inside-avoid print:border-black",
+                cssSize ? "p-1" : "p-3",
+              )}
+              style={rotated ? rotated.inner : (cssSize ?? undefined)}
+            >
+              <img
+                src={productDataMatrixUrl(product.id)}
+                alt={`Data Matrix code for ${product.name}`}
+                className={cssSize ? "h-full max-w-[40%] shrink-0 object-contain" : "h-16 w-16 shrink-0"}
+              />
+              <div className="min-w-0">
+                <p className="font-mono text-base font-bold leading-tight print:text-black">
+                  {product.sku || product.partNumber || product.name}
+                </p>
+                <p className="text-xs text-muted-foreground print:text-black">{product.name}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+
+          if (!rotated) return <div key={product.id}>{card}</div>;
+          return (
+            <div key={product.id} className="print:break-inside-avoid" style={rotated.outer}>
+              {card}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
