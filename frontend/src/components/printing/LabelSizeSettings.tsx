@@ -40,6 +40,10 @@ export function LabelSizeSettings({
     onChange({ ...value, zplDpi });
   }
 
+  function setZplRotate(zplRotate: boolean) {
+    onChange({ ...value, zplRotate });
+  }
+
   return (
     <Card className="print:hidden">
       <CardHeader>
@@ -104,14 +108,27 @@ export function LabelSizeSettings({
               </Button>
             </div>
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>ZPL orientation</Label>
+            <div className="flex gap-1">
+              <Button type="button" variant={!value.zplRotate ? "default" : "outline"} size="sm" onClick={() => setZplRotate(false)}>
+                Normal
+              </Button>
+              <Button type="button" variant={value.zplRotate ? "default" : "outline"} size="sm" onClick={() => setZplRotate(true)}>
+                Rotate 90°
+              </Button>
+            </div>
+          </div>
         </div>
 
         <p className="text-xs text-muted-foreground">
           Leave both blank to use the default label shape. Set one to scale the other automatically, or set both to fit
           the label inside that exact box. This sets the physical size for downloaded/browser-printed labels, and the
           aspect ratio for direct Brady printing (actual Brady print size is set by the label stock loaded in the
-          printer). The DPI setting only affects ZPL export - match it to your Zebra printer's print head resolution
-          (check the printer's spec sheet or configuration label; 203 dpi is the more common default).
+          printer). The DPI and orientation settings only affect ZPL export - match DPI to your Zebra printer's print
+          head resolution (check the printer's spec sheet or configuration label; 203 dpi is the more common default),
+          and use Rotate 90° if labels are coming out sideways for how your stock is loaded.
         </p>
       </CardContent>
     </Card>

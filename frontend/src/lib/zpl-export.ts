@@ -26,23 +26,24 @@ async function downloadZpl(url: string, filename: string): Promise<void> {
   }
 }
 
-function zplQuery(ids: string[], dims: { widthMm: number; heightMm: number }, dpi: number): string {
+function zplQuery(ids: string[], dims: { widthMm: number; heightMm: number }, dpi: number, rotate: boolean): string {
   return new URLSearchParams({
     ids: ids.join(","),
     widthMm: String(dims.widthMm),
     heightMm: String(dims.heightMm),
     dpi: String(dpi),
+    ...(rotate ? { rotate: "1" } : {}),
   }).toString();
 }
 
 export async function downloadLocationsZpl(locations: Location[], settings: LabelSizeSettings): Promise<void> {
   const dims = resolveDimensionsMmOrDefault(settings, STACKED_ASPECT, STACKED_DEFAULT_PX);
-  const query = zplQuery(locations.map((l) => l.id), dims, settings.zplDpi);
+  const query = zplQuery(locations.map((l) => l.id), dims, settings.zplDpi, settings.zplRotate);
   await downloadZpl(`/api/locations/zpl?${query}`, "location-labels.zpl");
 }
 
 export async function downloadProductsZpl(products: Product[], settings: LabelSizeSettings): Promise<void> {
   const dims = resolveDimensionsMmOrDefault(settings, SIDE_BY_SIDE_ASPECT, SIDE_BY_SIDE_DEFAULT_PX);
-  const query = zplQuery(products.map((p) => p.id), dims, settings.zplDpi);
+  const query = zplQuery(products.map((p) => p.id), dims, settings.zplDpi, settings.zplRotate);
   await downloadZpl(`/api/products/zpl?${query}`, "product-labels.zpl");
 }

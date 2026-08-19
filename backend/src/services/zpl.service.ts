@@ -7,6 +7,10 @@ export interface ZplLabelSize {
   widthMm: number;
   heightMm: number;
   dpi: 203 | 300;
+  // Printer feeds the label stock sideways relative to the design (common on some Zebra
+  // desktop printers depending on how the roll is loaded) - rotates the whole layout 90°
+  // clockwise into a physical page with width/height swapped, rather than just rotating text.
+  rotate: boolean;
 }
 
 // Shared query-param parsing for the /zpl bulk endpoints (locations and products) - widthMm
@@ -20,7 +24,18 @@ export function parseZplLabelSize(query: Record<string, unknown>): ZplLabelSize 
   if (!Number.isFinite(widthMm) || widthMm <= 0) throw new Error("widthMm must be a positive number");
   if (!Number.isFinite(heightMm) || heightMm <= 0) throw new Error("heightMm must be a positive number");
   if (dpi !== 203 && dpi !== 300) throw new Error("dpi must be 203 or 300");
-  return { widthMm, heightMm, dpi };
+  const rotate = query.rotate === "1" || query.rotate === "true";
+  return { widthMm, heightMm, dpi, rotate };
+}
+
+// Rotates a field's top-left origin (and switches its orientation to "R") so the whole
+// label layout turns 90° clockwise into a physical page whose width/height are swapped.
+// ZPL defines (x,y) for a rotated field as the top-left corner of the *rotated* footprint,
+// so this is the standard image-rotation corner mapping: (x,y) -> (canvasHeight - y -
+// boxHeight, x). boxHeight is the field's own unrotated height (font height for text,
+// side length for the square QR/Data Matrix codes).
+function rotateOrigin(x: number, y: number, boxHeight: number, canvasHeight: number): { x: number; y: number } {
+  return { x: canvasHeight - y - boxHeight, y: x };
 }
 
 function mmToDots(mm: number, dpi: number): number {
@@ -62,7 +77,7 @@ function fitFontHeight(text: string, maxWidthDots: number, desiredHeightDots: nu
 // Stacked layout (code on top, text below) mirroring the location Brady label - encodes the
 // same short-code URL the printed QR/PNG paths use (see qrcode.service.ts).
 export function buildLocationZpl(fullCode: string, name: string, size: ZplLabelSize): string {
-  const { dpi } = size;
+  const { dpi, rotate } = size;
   const w = mmToDots(size.widthMm, dpi);
   const h = mmToDots(size.heightMm, dpi);
   const url = locationUrl(fullCode);
@@ -73,11 +88,12 @@ export function buildLocationZpl(fullCode: string, name: string, size: ZplLabelS
   // value, but behaves that way in practice and is the standard approximation used by ZPL
   // tooling - verified against Labelary's renderer during development.
   const dotsPerModule = Math.max(1, Math.min(10, Math.round(codeAreaWidth / modules)));
-  const qrX = Math.round((w - dotsPerModule * modules) / 2);
+  const qrSize = dotsPerModule * modules;
+  const qrX = Math.round((w - qrSize) / 2);
   const qrY = Math.round(h * 0.04);
   // ^BQ prints its own quiet zone beyond modules*dotsPerModule - padding the text position
   // by less than this visibly overlapped the code in testing.
-  const qrFootprint = Math.round(dotsPerModule * modules * 1.35);
+  const qrFootprint = Math.round(qrSize * 1.35);
 
   const textX = Math.round(w * 0.05);
   const textMaxWidth = w - textX * 2;
@@ -86,14 +102,19 @@ export function buildLocationZpl(fullCode: string, name: string, size: ZplLabelS
   const textY2 = textY1 + fontH1 + Math.round(h * 0.02);
   const fontH2 = fitFontHeight(name, textMaxWidth, Math.round(w * 0.09), 8);
 
+  const orient = rotate ? "R" : "N";
+  const qr = rotate ? rotateOrigin(qrX, qrY, qrSize, h) : { x: qrX, y: qrY };
+  const t1 = rotate ? rotateOrigin(textX, textY1, fontH1, h) : { x: textX, y: textY1 };
+  const t2 = rotate ? rotateOrigin(textX, textY2, fontH2, h) : { x: textX, y: textY2 };
+
   return [
     "^XA",
     "^CI28",
-    `^PW${w}`,
-    `^LL${h}`,
-    `^FO${qrX},${qrY}^BQN,2,${dotsPerModule}^FDQA,${url}^FS`,
-    `^FO${textX},${textY1}^A0N,${fontH1},${fontH1}^FB${textMaxWidth},1,0,C^FD${escapeZpl(fullCode)}^FS`,
-    `^FO${textX},${textY2}^A0N,${fontH2},${fontH2}^FB${textMaxWidth},1,0,C^FD${escapeZpl(name)}^FS`,
+    `^PW${rotate ? h : w}`,
+    `^LL${rotate ? w : h}`,
+    `^FO${qr.x},${qr.y}^BQ${orient},2,${dotsPerModule}^FDQA,${url}^FS`,
+    `^FO${t1.x},${t1.y}^A0${orient},${fontH1},${fontH1}^FB${textMaxWidth},1,0,C^FD${escapeZpl(fullCode)}^FS`,
+    `^FO${t2.x},${t2.y}^A0${orient},${fontH2},${fontH2}^FB${textMaxWidth},1,0,C^FD${escapeZpl(name)}^FS`,
     "^XZ",
   ].join("\n");
 }
@@ -101,7 +122,7 @@ export function buildLocationZpl(fullCode: string, name: string, size: ZplLabelS
 // Side-by-side layout (code full-height on the left, text to the right) mirroring the
 // product Brady label.
 export function buildProductZpl(productId: string, sku: string, name: string, size: ZplLabelSize): string {
-  const { dpi } = size;
+  const { dpi, rotate } = size;
   const w = mmToDots(size.widthMm, dpi);
   const h = mmToDots(size.heightMm, dpi);
   const url = productUrl(productId);
@@ -119,15 +140,24 @@ export function buildProductZpl(productId: string, sku: string, name: string, si
   const fontH1 = fitFontHeight(sku, textMaxWidth, Math.round(h * 0.22), 10);
   const textY2 = textY1 + fontH1 + Math.round(h * 0.06);
   const fontH2 = fitFontHeight(name, textMaxWidth, Math.round(h * 0.13), 8);
+  // ^FB below allows the name to wrap across 2 lines - approximate the block's total
+  // rendered height as 2 line heights (no extra inter-line spacing is requested via ^FB)
+  // so the rotated field origin doesn't drift off the label.
+  const nameBlockHeight = fontH2 * 2;
+
+  const orient = rotate ? "R" : "N";
+  const dm = rotate ? rotateOrigin(dmX, dmY, dmSize, h) : { x: dmX, y: dmY };
+  const t1 = rotate ? rotateOrigin(textX, textY1, fontH1, h) : { x: textX, y: textY1 };
+  const t2 = rotate ? rotateOrigin(textX, textY2, nameBlockHeight, h) : { x: textX, y: textY2 };
 
   return [
     "^XA",
     "^CI28",
-    `^PW${w}`,
-    `^LL${h}`,
-    `^FO${dmX},${dmY}^BXN,${dotsPerModule},200^FD${url}^FS`,
-    `^FO${textX},${textY1}^A0N,${fontH1},${fontH1}^FB${textMaxWidth},1,0,L^FD${escapeZpl(sku)}^FS`,
-    `^FO${textX},${textY2}^A0N,${fontH2},${fontH2}^FB${textMaxWidth},2,0,L^FD${escapeZpl(name)}^FS`,
+    `^PW${rotate ? h : w}`,
+    `^LL${rotate ? w : h}`,
+    `^FO${dm.x},${dm.y}^BX${orient},${dotsPerModule},200^FD${url}^FS`,
+    `^FO${t1.x},${t1.y}^A0${orient},${fontH1},${fontH1}^FB${textMaxWidth},1,0,L^FD${escapeZpl(sku)}^FS`,
+    `^FO${t2.x},${t2.y}^A0${orient},${fontH2},${fontH2}^FB${textMaxWidth},2,0,L^FD${escapeZpl(name)}^FS`,
     "^XZ",
   ].join("\n");
 }

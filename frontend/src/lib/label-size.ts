@@ -10,6 +10,9 @@ export interface LabelSizeSettings {
   // Only used for ZPL export (Zebra printers) - the Brady/PNG/browser-print paths don't
   // need a printer resolution, they render through the browser's own canvas/CSS engine.
   zplDpi: ZplDpi;
+  // Rotates the ZPL layout 90° clockwise (and swaps the physical ^PW/^LL dimensions) for
+  // printers whose loaded label stock feeds the design sideways.
+  zplRotate: boolean;
 }
 
 const STORAGE_KEY = "vsp.labelSize.v1";
@@ -18,7 +21,13 @@ const MM_PER_INCH = 25.4;
 // output - independent of screen DPI, just a reasonable print-quality target.
 const PRINT_DPI = 300;
 
-const DEFAULT_SETTINGS: LabelSizeSettings = { unit: "mm", maxWidthMm: null, maxHeightMm: null, zplDpi: 203 };
+const DEFAULT_SETTINGS: LabelSizeSettings = {
+  unit: "mm",
+  maxWidthMm: null,
+  maxHeightMm: null,
+  zplDpi: 203,
+  zplRotate: false,
+};
 
 export function mmToIn(mm: number): number {
   return mm / MM_PER_INCH;
