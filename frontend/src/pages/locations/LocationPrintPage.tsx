@@ -7,10 +7,17 @@ import { Button } from "@/components/ui/button";
 import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
 import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
 import { ZplExportButton } from "@/components/printing/ZplExportButton";
-import { renderLocationLabelImage, downloadLocationLabelImage, locationLabelCssSize, STACKED_ASPECT } from "@/lib/brady-label-image";
+import {
+  renderLocationLabelImage,
+  downloadLocationLabelImage,
+  STACKED_ASPECT,
+  SIDE_BY_SIDE_ASPECT,
+} from "@/lib/brady-label-image";
 import {
   labelPageSizeCss,
+  resolveCssSize,
   resolveLabelDimensionsMm,
+  resolveSideBySideContentSizesMm,
   resolveStackedContentSizesMm,
   rotateCssBoxStyles,
   useLabelSizeSettings,
@@ -43,11 +50,19 @@ export function LocationPrintPage() {
   const ids = (searchParams.get("ids") ?? "").split(",").filter(Boolean);
   const [includeParentNames, setIncludeParentNames] = useState(false);
   const [labelSize, setLabelSize] = useLabelSizeSettings();
-  const cssSize = locationLabelCssSize(labelSize);
+  const isRow = labelSize.locationTextPosition !== "bottom";
+  const textFirst = labelSize.locationTextPosition === "left";
+  const aspect = isRow ? SIDE_BY_SIDE_ASPECT : STACKED_ASPECT;
+  const cssSize = resolveCssSize(labelSize, aspect);
   const rotated = rotateCssBoxStyles(cssSize, labelSize.zplRotate);
   const pageSizeCss = labelPageSizeCss(cssSize, labelSize.zplRotate);
-  const dimsMm = resolveLabelDimensionsMm(labelSize, STACKED_ASPECT);
-  const contentSizes = dimsMm ? resolveStackedContentSizesMm(dimsMm, labelSize) : null;
+  const dimsMm = resolveLabelDimensionsMm(labelSize, aspect);
+  const contentSizes = dimsMm
+    ? (isRow ? resolveSideBySideContentSizesMm(dimsMm, labelSize) : resolveStackedContentSizesMm(dimsMm, labelSize))
+    : null;
+  const alignClass = isRow
+    ? { start: "justify-start", center: "justify-center", end: "justify-end" }[labelSize.locationContentAlign]
+    : { start: "items-start", center: "items-center", end: "items-end" }[labelSize.locationContentAlign];
 
   const results = useQueries({
     queries: ids.map((id) => ({
@@ -99,20 +114,17 @@ export function LocationPrintPage() {
 
       <div className={cssSize ? "flex flex-wrap gap-4 print:gap-2" : "grid grid-cols-3 gap-4 print:grid-cols-3 print:gap-2"}>
         {locations.map((location) => {
-          const card = (
-            <div
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 overflow-hidden rounded-md border border-border text-center print:break-inside-avoid print:border-black",
-                cssSize ? "p-1" : "p-3",
-              )}
-              style={rotated ? rotated.inner : (cssSize ?? undefined)}
-            >
-              <img
-                src={locationQrCodeUrl(location.id)}
-                alt={`QR code for ${location.name}`}
-                className={contentSizes ? "shrink-0 object-contain" : "h-24 w-24"}
-                style={contentSizes ? { width: `${contentSizes.codeSizeMm}mm`, height: `${contentSizes.codeSizeMm}mm` } : undefined}
-              />
+          const codeEl = (
+            <img
+              key="code"
+              src={locationQrCodeUrl(location.id)}
+              alt={`QR code for ${location.name}`}
+              className={contentSizes ? "shrink-0 object-contain" : "h-24 w-24 shrink-0"}
+              style={contentSizes ? { width: `${contentSizes.codeSizeMm}mm`, height: `${contentSizes.codeSizeMm}mm` } : undefined}
+            />
+          );
+          const textEl = (
+            <div key="text" className={cn("flex flex-col", isRow ? "min-w-0 text-left" : "items-center text-center")}>
               <p
                 className="font-mono text-base font-bold leading-tight print:text-black"
                 style={contentSizes ? { fontSize: `${contentSizes.primaryFontMm}mm` } : undefined}
@@ -125,6 +137,19 @@ export function LocationPrintPage() {
               >
                 {includeParentNames ? buildFullName(location) : location.name}
               </p>
+            </div>
+          );
+
+          const card = (
+            <div
+              className={cn(
+                "flex overflow-hidden rounded-md border border-border print:break-inside-avoid print:border-black",
+                isRow ? cn("flex-row items-center gap-3", alignClass) : cn("flex-col gap-1", alignClass),
+                cssSize ? "p-1" : "p-3",
+              )}
+              style={rotated ? rotated.inner : (cssSize ?? undefined)}
+            >
+              {isRow && textFirst ? [textEl, codeEl] : [codeEl, textEl]}
             </div>
           );
 

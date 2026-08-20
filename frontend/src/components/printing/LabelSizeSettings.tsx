@@ -5,8 +5,10 @@ import { Label } from "@/components/ui/label";
 import {
   inToMm,
   mmToIn,
+  type ContentAlign,
   type LabelSizeSettings as LabelSizeSettingsValue,
   type LabelUnit,
+  type LocationTextPosition,
   type ZplDpi,
 } from "@/lib/label-size";
 
@@ -42,6 +44,14 @@ export function LabelSizeSettings({
 
   function setZplRotate(zplRotate: boolean) {
     onChange({ ...value, zplRotate });
+  }
+
+  function setLocationTextPosition(locationTextPosition: LocationTextPosition) {
+    onChange({ ...value, locationTextPosition });
+  }
+
+  function setLocationContentAlign(locationContentAlign: ContentAlign) {
+    onChange({ ...value, locationContentAlign });
   }
 
   function parsePercent(raw: string, fallback: number): number {
@@ -154,6 +164,66 @@ export function LabelSizeSettings({
               onChange={(e) => onChange({ ...value, fontScalePercent: parsePercent(e.target.value, value.fontScalePercent) })}
             />
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Location text position</Label>
+            <div className="flex gap-1">
+              <Button
+                type="button"
+                variant={value.locationTextPosition === "bottom" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setLocationTextPosition("bottom")}
+              >
+                Below code
+              </Button>
+              <Button
+                type="button"
+                variant={value.locationTextPosition === "right" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setLocationTextPosition("right")}
+              >
+                Right of code
+              </Button>
+              <Button
+                type="button"
+                variant={value.locationTextPosition === "left" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setLocationTextPosition("left")}
+              >
+                Left of code
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Content alignment</Label>
+            <div className="flex gap-1">
+              <Button
+                type="button"
+                variant={value.locationContentAlign === "start" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setLocationContentAlign("start")}
+              >
+                Left
+              </Button>
+              <Button
+                type="button"
+                variant={value.locationContentAlign === "center" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setLocationContentAlign("center")}
+              >
+                Center
+              </Button>
+              <Button
+                type="button"
+                variant={value.locationContentAlign === "end" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setLocationContentAlign("end")}
+              >
+                Right
+              </Button>
+            </div>
+          </div>
         </div>
 
         <p className="text-xs text-muted-foreground">
@@ -166,7 +236,10 @@ export function LabelSizeSettings({
           requires a max width or height set above (there's no fixed box to rotate otherwise). Barcode scale and text
           scale only affect the on-screen preview and the Print button (not ZPL export or Brady printing) - they
           also require a max width or height set above, since that's what the code/text are scaled relative to.
-          Lower the barcode scale on large labels to leave more room for text.
+          Lower the barcode scale on large labels to leave more room for text. Location text position and content
+          alignment only apply to the location print page (products keep their fixed side-by-side layout) - content
+          alignment controls how the code+text block sits within the label box, useful when the box is bigger than
+          the content it holds.
         </p>
       </CardContent>
     </Card>

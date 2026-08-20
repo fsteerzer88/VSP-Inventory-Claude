@@ -3,6 +3,12 @@ import type { CSSProperties } from "react";
 
 export type LabelUnit = "mm" | "in";
 export type ZplDpi = 203 | 300;
+// Where the location text sits relative to the QR code - "bottom" is the original stacked
+// layout, "right"/"left" put the code and text side by side in that horizontal order.
+export type LocationTextPosition = "bottom" | "right" | "left";
+// How the code+text content block is justified within the label box, for when the box is
+// bigger than the content (e.g. a wide physical label with a small code+text footprint).
+export type ContentAlign = "start" | "center" | "end";
 
 export interface LabelSizeSettings {
   unit: LabelUnit;
@@ -21,6 +27,9 @@ export interface LabelSizeSettings {
   // is set. Lets a big physical label (e.g. 4in x 3in) get correspondingly bigger text
   // instead of staying pinned to the small default on-screen size.
   fontScalePercent: number;
+  // Only used by the location print page - products keep their fixed side-by-side layout.
+  locationTextPosition: LocationTextPosition;
+  locationContentAlign: ContentAlign;
 }
 
 const STORAGE_KEY = "vsp.labelSize.v1";
@@ -37,6 +46,8 @@ const DEFAULT_SETTINGS: LabelSizeSettings = {
   zplRotate: false,
   barcodeScalePercent: 70,
   fontScalePercent: 100,
+  locationTextPosition: "bottom",
+  locationContentAlign: "center",
 };
 
 export function mmToIn(mm: number): number {
