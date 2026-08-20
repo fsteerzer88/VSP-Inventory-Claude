@@ -9,8 +9,34 @@ import {
   type LabelSizeSettings as LabelSizeSettingsValue,
   type LabelUnit,
   type LocationTextPosition,
+  type RotationDeg,
   type ZplDpi,
 } from "@/lib/label-size";
+
+const ROTATION_OPTIONS: RotationDeg[] = [0, 90, 180, 270];
+
+function RotationButtons({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: RotationDeg;
+  onChange: (deg: RotationDeg) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label>{label}</Label>
+      <div className="flex gap-1">
+        {ROTATION_OPTIONS.map((deg) => (
+          <Button key={deg} type="button" variant={value === deg ? "default" : "outline"} size="sm" onClick={() => onChange(deg)}>
+            {deg}°
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function formatForUnit(mm: number, unit: LabelUnit): string {
   const value = unit === "mm" ? mm : mmToIn(mm);
@@ -224,6 +250,18 @@ export function LabelSizeSettings({
               </Button>
             </div>
           </div>
+
+          <RotationButtons
+            label="QR rotation"
+            value={value.locationQrRotationDeg}
+            onChange={(locationQrRotationDeg) => onChange({ ...value, locationQrRotationDeg })}
+          />
+
+          <RotationButtons
+            label="Text rotation"
+            value={value.locationTextRotationDeg}
+            onChange={(locationTextRotationDeg) => onChange({ ...value, locationTextRotationDeg })}
+          />
         </div>
 
         <p className="text-xs text-muted-foreground">
@@ -239,7 +277,11 @@ export function LabelSizeSettings({
           Lower the barcode scale on large labels to leave more room for text. Location text position and content
           alignment only apply to the location print page (products keep their fixed side-by-side layout) - content
           alignment controls how the code+text block sits within the label box, useful when the box is bigger than
-          the content it holds.
+          the content it holds. QR rotation and text rotation independently rotate just the code or just the text in
+          place, separate from the whole-label orientation setting above - only on the location print page. The QR
+          code is square so it never overflows its own space, but the text block isn't - at 90°/270° make sure
+          there's enough room (label size, barcode scale) for the rotated text to fit, since it isn't automatically
+          resized to compensate.
         </p>
       </CardContent>
     </Card>

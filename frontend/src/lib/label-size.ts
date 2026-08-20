@@ -9,6 +9,15 @@ export type LocationTextPosition = "bottom" | "right" | "left";
 // How the code+text content block is justified within the label box, for when the box is
 // bigger than the content (e.g. a wide physical label with a small code+text footprint).
 export type ContentAlign = "start" | "center" | "end";
+// Independent in-place rotation for the QR code or the text block, separate from the
+// whole-label "Rotate 90°" orientation setting (which rotates the entire card as one rigid
+// block for printers whose stock feeds sideways). Since the QR code is always square,
+// rotating it in place never changes its footprint. The text block isn't square, so at 90°/
+// 270° its rotated footprint can exceed the space it was laid out for - unlike the whole-
+// label rotation (which swaps a known, fixed box size), there's no reliable size to swap to
+// here since the text's own size is content-driven, not a declared value. Leave enough room
+// via label size/content alignment when using 90°/270° on text.
+export type RotationDeg = 0 | 90 | 180 | 270;
 
 export interface LabelSizeSettings {
   unit: LabelUnit;
@@ -30,6 +39,10 @@ export interface LabelSizeSettings {
   // Only used by the location print page - products keep their fixed side-by-side layout.
   locationTextPosition: LocationTextPosition;
   locationContentAlign: ContentAlign;
+  // Independent rotation of the QR code / text block - see RotationDeg above. Also only
+  // used by the location print page.
+  locationQrRotationDeg: RotationDeg;
+  locationTextRotationDeg: RotationDeg;
 }
 
 const STORAGE_KEY = "vsp.labelSize.v1";
@@ -48,6 +61,8 @@ const DEFAULT_SETTINGS: LabelSizeSettings = {
   fontScalePercent: 100,
   locationTextPosition: "bottom",
   locationContentAlign: "center",
+  locationQrRotationDeg: 0,
+  locationTextRotationDeg: 0,
 };
 
 export function mmToIn(mm: number): number {

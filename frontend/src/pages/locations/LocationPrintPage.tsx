@@ -120,11 +120,18 @@ export function LocationPrintPage() {
               src={locationQrCodeUrl(location.id)}
               alt={`QR code for ${location.name}`}
               className={contentSizes ? "shrink-0 object-contain" : "h-24 w-24 shrink-0"}
-              style={contentSizes ? { width: `${contentSizes.codeSizeMm}mm`, height: `${contentSizes.codeSizeMm}mm` } : undefined}
+              style={{
+                ...(contentSizes ? { width: `${contentSizes.codeSizeMm}mm`, height: `${contentSizes.codeSizeMm}mm` } : undefined),
+                ...(labelSize.locationQrRotationDeg ? { transform: `rotate(${labelSize.locationQrRotationDeg}deg)` } : undefined),
+              }}
             />
           );
           const textEl = (
-            <div key="text" className={cn("flex flex-col", isRow ? "min-w-0 text-left" : "items-center text-center")}>
+            <div
+              key="text"
+              className={cn("flex flex-col", isRow ? "min-w-0 text-left" : "items-center text-center")}
+              style={labelSize.locationTextRotationDeg ? { transform: `rotate(${labelSize.locationTextRotationDeg}deg)` } : undefined}
+            >
               <p
                 className="font-mono text-base font-bold leading-tight print:text-black"
                 style={contentSizes ? { fontSize: `${contentSizes.primaryFontMm}mm` } : undefined}
