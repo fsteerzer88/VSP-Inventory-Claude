@@ -6,8 +6,14 @@ import { Button } from "@/components/ui/button";
 import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
 import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
 import { ZplExportButton } from "@/components/printing/ZplExportButton";
-import { renderProductLabelImage, downloadProductLabelImage, productLabelCssSize } from "@/lib/brady-label-image";
-import { labelPageSizeCss, rotateCssBoxStyles, useLabelSizeSettings } from "@/lib/label-size";
+import { renderProductLabelImage, downloadProductLabelImage, productLabelCssSize, SIDE_BY_SIDE_ASPECT } from "@/lib/brady-label-image";
+import {
+  labelPageSizeCss,
+  resolveLabelDimensionsMm,
+  resolveSideBySideContentSizesMm,
+  rotateCssBoxStyles,
+  useLabelSizeSettings,
+} from "@/lib/label-size";
 import { downloadProductsZpl } from "@/lib/zpl-export";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/types/models";
@@ -25,6 +31,8 @@ export function ProductPrintPage() {
   const cssSize = productLabelCssSize(labelSize);
   const rotated = rotateCssBoxStyles(cssSize, labelSize.zplRotate);
   const pageSizeCss = labelPageSizeCss(cssSize, labelSize.zplRotate);
+  const dimsMm = resolveLabelDimensionsMm(labelSize, SIDE_BY_SIDE_ASPECT);
+  const contentSizes = dimsMm ? resolveSideBySideContentSizesMm(dimsMm, labelSize) : null;
 
   const results = useQueries({
     queries: ids.map((id) => ({
@@ -77,13 +85,22 @@ export function ProductPrintPage() {
               <img
                 src={productDataMatrixUrl(product.id)}
                 alt={`Data Matrix code for ${product.name}`}
-                className={cssSize ? "h-full max-w-[40%] shrink-0 object-contain" : "h-16 w-16 shrink-0"}
+                className={contentSizes ? "shrink-0 object-contain" : "h-16 w-16 shrink-0"}
+                style={contentSizes ? { width: `${contentSizes.codeSizeMm}mm`, height: `${contentSizes.codeSizeMm}mm` } : undefined}
               />
               <div className="min-w-0">
-                <p className="font-mono text-base font-bold leading-tight print:text-black">
+                <p
+                  className="font-mono text-base font-bold leading-tight print:text-black"
+                  style={contentSizes ? { fontSize: `${contentSizes.primaryFontMm}mm` } : undefined}
+                >
                   {product.sku || product.partNumber || product.name}
                 </p>
-                <p className="text-xs text-muted-foreground print:text-black">{product.name}</p>
+                <p
+                  className="text-xs text-muted-foreground print:text-black"
+                  style={contentSizes ? { fontSize: `${contentSizes.secondaryFontMm}mm` } : undefined}
+                >
+                  {product.name}
+                </p>
               </div>
             </div>
           );

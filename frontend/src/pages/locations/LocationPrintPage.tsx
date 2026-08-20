@@ -7,8 +7,14 @@ import { Button } from "@/components/ui/button";
 import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
 import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
 import { ZplExportButton } from "@/components/printing/ZplExportButton";
-import { renderLocationLabelImage, downloadLocationLabelImage, locationLabelCssSize } from "@/lib/brady-label-image";
-import { labelPageSizeCss, rotateCssBoxStyles, useLabelSizeSettings } from "@/lib/label-size";
+import { renderLocationLabelImage, downloadLocationLabelImage, locationLabelCssSize, STACKED_ASPECT } from "@/lib/brady-label-image";
+import {
+  labelPageSizeCss,
+  resolveLabelDimensionsMm,
+  resolveStackedContentSizesMm,
+  rotateCssBoxStyles,
+  useLabelSizeSettings,
+} from "@/lib/label-size";
 import { downloadLocationsZpl } from "@/lib/zpl-export";
 import { cn } from "@/lib/utils";
 import type { Location } from "@/types/models";
@@ -40,6 +46,8 @@ export function LocationPrintPage() {
   const cssSize = locationLabelCssSize(labelSize);
   const rotated = rotateCssBoxStyles(cssSize, labelSize.zplRotate);
   const pageSizeCss = labelPageSizeCss(cssSize, labelSize.zplRotate);
+  const dimsMm = resolveLabelDimensionsMm(labelSize, STACKED_ASPECT);
+  const contentSizes = dimsMm ? resolveStackedContentSizesMm(dimsMm, labelSize) : null;
 
   const results = useQueries({
     queries: ids.map((id) => ({
@@ -102,12 +110,19 @@ export function LocationPrintPage() {
               <img
                 src={locationQrCodeUrl(location.id)}
                 alt={`QR code for ${location.name}`}
-                className={cssSize ? "max-h-full max-w-full object-contain" : "h-24 w-24"}
+                className={contentSizes ? "shrink-0 object-contain" : "h-24 w-24"}
+                style={contentSizes ? { width: `${contentSizes.codeSizeMm}mm`, height: `${contentSizes.codeSizeMm}mm` } : undefined}
               />
-              <p className="font-mono text-base font-bold leading-tight print:text-black">
+              <p
+                className="font-mono text-base font-bold leading-tight print:text-black"
+                style={contentSizes ? { fontSize: `${contentSizes.primaryFontMm}mm` } : undefined}
+              >
                 {location.fullCode ?? location.code}
               </p>
-              <p className="text-xs text-muted-foreground print:text-black">
+              <p
+                className="text-xs text-muted-foreground print:text-black"
+                style={contentSizes ? { fontSize: `${contentSizes.secondaryFontMm}mm` } : undefined}
+              >
                 {includeParentNames ? buildFullName(location) : location.name}
               </p>
             </div>

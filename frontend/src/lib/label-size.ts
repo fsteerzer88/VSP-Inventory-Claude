@@ -14,6 +14,13 @@ export interface LabelSizeSettings {
   // Rotates the ZPL layout 90° clockwise (and swaps the physical ^PW/^LL dimensions) for
   // printers whose loaded label stock feeds the design sideways.
   zplRotate: boolean;
+  // Percent of the label's constrained dimension the barcode/QR/Data Matrix code occupies -
+  // only takes effect once a max width or height is set (see resolve*ContentSizesMm below).
+  barcodeScalePercent: number;
+  // Percent multiplier on the proportional base font sizes used once a max width or height
+  // is set. Lets a big physical label (e.g. 4in x 3in) get correspondingly bigger text
+  // instead of staying pinned to the small default on-screen size.
+  fontScalePercent: number;
 }
 
 const STORAGE_KEY = "vsp.labelSize.v1";
@@ -28,6 +35,8 @@ const DEFAULT_SETTINGS: LabelSizeSettings = {
   maxHeightMm: null,
   zplDpi: 203,
   zplRotate: false,
+  barcodeScalePercent: 70,
+  fontScalePercent: 100,
 };
 
 export function mmToIn(mm: number): number {
@@ -134,6 +143,48 @@ export function labelPageSizeCss(
   if (!cssSize) return null;
   const { width, height } = rotate ? { width: cssSize.height, height: cssSize.width } : cssSize;
   return `@page { size: ${width} ${height}; margin: 0; }`;
+}
+
+export interface LabelContentSizesMm {
+  codeSizeMm: number;
+  primaryFontMm: number;
+  secondaryFontMm: number;
+}
+
+// Mirrors the proportional layout math already used for Brady PNG canvas rendering
+// (renderStackedLabelCanvas in brady-label-image.ts), ported to explicit CSS sizes so the
+// browser-print card is sized deterministically instead of relying on flexbox's automatic
+// min-size for the code image - which let the image ignore max-height and overflow the card
+// (barcode clipped off the top, text clipped off the bottom) once a label was large enough
+// for the image's intrinsic size to exceed the available height.
+export function resolveStackedContentSizesMm(
+  dimsMm: { widthMm: number; heightMm: number },
+  settings: Pick<LabelSizeSettings, "barcodeScalePercent" | "fontScalePercent">,
+): LabelContentSizesMm {
+  const barcodeScale = settings.barcodeScalePercent / 100;
+  const fontScale = settings.fontScalePercent / 100;
+  return {
+    codeSizeMm: barcodeScale * Math.min(dimsMm.widthMm, dimsMm.heightMm),
+    primaryFontMm: dimsMm.heightMm * 0.08 * fontScale,
+    secondaryFontMm: dimsMm.heightMm * 0.047 * fontScale,
+  };
+}
+
+// Same idea as resolveStackedContentSizesMm, mirroring renderSideBySideLabelCanvas's
+// proportions for the product label layout (code sized off the full height, text to its
+// right) so the "barcode scale" / "font size" settings behave consistently across both
+// label types since they share one settings panel.
+export function resolveSideBySideContentSizesMm(
+  dimsMm: { widthMm: number; heightMm: number },
+  settings: Pick<LabelSizeSettings, "barcodeScalePercent" | "fontScalePercent">,
+): LabelContentSizesMm {
+  const barcodeScale = settings.barcodeScalePercent / 100;
+  const fontScale = settings.fontScalePercent / 100;
+  return {
+    codeSizeMm: barcodeScale * dimsMm.heightMm,
+    primaryFontMm: dimsMm.heightMm * 0.13 * fontScale,
+    secondaryFontMm: dimsMm.heightMm * 0.0875 * fontScale,
+  };
 }
 
 // ZPL needs concrete mm dimensions with no "auto" option (unlike the canvas/CSS paths,

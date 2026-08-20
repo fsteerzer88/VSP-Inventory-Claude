@@ -44,6 +44,12 @@ export function LabelSizeSettings({
     onChange({ ...value, zplRotate });
   }
 
+  function parsePercent(raw: string, fallback: number): number {
+    if (raw.trim() === "") return fallback;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
   return (
     <Card className="print:hidden">
       <CardHeader>
@@ -120,6 +126,34 @@ export function LabelSizeSettings({
               </Button>
             </div>
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="label-barcode-scale">Barcode scale (%)</Label>
+            <Input
+              id="label-barcode-scale"
+              type="number"
+              min={10}
+              max={100}
+              step={5}
+              className="w-24"
+              value={value.barcodeScalePercent}
+              onChange={(e) => onChange({ ...value, barcodeScalePercent: parsePercent(e.target.value, value.barcodeScalePercent) })}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="label-font-scale">Text scale (%)</Label>
+            <Input
+              id="label-font-scale"
+              type="number"
+              min={25}
+              max={300}
+              step={5}
+              className="w-24"
+              value={value.fontScalePercent}
+              onChange={(e) => onChange({ ...value, fontScalePercent: parsePercent(e.target.value, value.fontScalePercent) })}
+            />
+          </div>
         </div>
 
         <p className="text-xs text-muted-foreground">
@@ -129,7 +163,10 @@ export function LabelSizeSettings({
           printer). The DPI setting only affects ZPL export - match it to your Zebra printer's print head resolution
           (check the printer's spec sheet or configuration label; 203 dpi is the more common default). Rotate 90°
           applies to both ZPL export and the Print button, for printers whose stock feeds labels sideways - it
-          requires a max width or height set above (there's no fixed box to rotate otherwise).
+          requires a max width or height set above (there's no fixed box to rotate otherwise). Barcode scale and text
+          scale only affect the on-screen preview and the Print button (not ZPL export or Brady printing) - they
+          also require a max width or height set above, since that's what the code/text are scaled relative to.
+          Lower the barcode scale on large labels to leave more room for text.
         </p>
       </CardContent>
     </Card>
