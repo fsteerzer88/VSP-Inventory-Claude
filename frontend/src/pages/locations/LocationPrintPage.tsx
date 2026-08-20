@@ -8,7 +8,7 @@ import { BradyPrinterPanel } from "@/components/printing/BradyPrinterPanel";
 import { LabelSizeSettings } from "@/components/printing/LabelSizeSettings";
 import { ZplExportButton } from "@/components/printing/ZplExportButton";
 import { renderLocationLabelImage, downloadLocationLabelImage, locationLabelCssSize } from "@/lib/brady-label-image";
-import { rotateCssBoxStyles, useLabelSizeSettings } from "@/lib/label-size";
+import { labelPageSizeCss, rotateCssBoxStyles, useLabelSizeSettings } from "@/lib/label-size";
 import { downloadLocationsZpl } from "@/lib/zpl-export";
 import { cn } from "@/lib/utils";
 import type { Location } from "@/types/models";
@@ -39,6 +39,7 @@ export function LocationPrintPage() {
   const [labelSize, setLabelSize] = useLabelSizeSettings();
   const cssSize = locationLabelCssSize(labelSize);
   const rotated = rotateCssBoxStyles(cssSize, labelSize.zplRotate);
+  const pageSizeCss = labelPageSizeCss(cssSize, labelSize.zplRotate);
 
   const results = useQueries({
     queries: ids.map((id) => ({
@@ -51,6 +52,7 @@ export function LocationPrintPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      {pageSizeCss && <style>{pageSizeCss}</style>}
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <h1 className="text-2xl font-semibold tracking-tight">Print labels</h1>
         <div className="flex items-center gap-2">

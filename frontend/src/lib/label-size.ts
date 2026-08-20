@@ -121,6 +121,21 @@ export function rotateCssBoxStyles(
   };
 }
 
+// Without an explicit @page size, the browser prints using its own default paper size and
+// margins - for a physical label a fraction of an inch tall, the default margins alone
+// consume the whole page, forcing content to spill across extra sheets instead of one
+// page per label. This mirrors rotateCssBoxStyles' footprint swap so the declared page size
+// always matches what's actually rendered (rotated or not). Returns null when no explicit
+// label size is set, so callers fall back to normal browser print behavior.
+export function labelPageSizeCss(
+  cssSize: { width: string; height: string } | null,
+  rotate: boolean,
+): string | null {
+  if (!cssSize) return null;
+  const { width, height } = rotate ? { width: cssSize.height, height: cssSize.width } : cssSize;
+  return `@page { size: ${width} ${height}; margin: 0; }`;
+}
+
 // ZPL needs concrete mm dimensions with no "auto" option (unlike the canvas/CSS paths,
 // which can fall back to a pixel default) - so when neither max width/height is set, this
 // derives an equivalent physical size from the same defaultPx used for the PNG/Brady output
