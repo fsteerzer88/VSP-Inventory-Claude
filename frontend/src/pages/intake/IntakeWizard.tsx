@@ -20,13 +20,15 @@ type Step = "scan-product" | "photo" | "details" | "scan-location" | "confirm" |
 
 const LOCATION_QR_FORMATS = [BarcodeFormat.QR_CODE];
 
-function extractLocationId(scanned: string): string | null {
+// Location QR labels encode a short-link URL (/l/CODE, see qrcode.service.ts) rather than
+// the raw code, so a scan needs to be unwrapped before it can be looked up by code.
+function extractLocationCode(scanned: string): string | null {
   try {
     const url = new URL(scanned);
-    const match = url.pathname.match(/\/locations\/([^/]+)/);
-    if (match) return match[1];
+    const match = url.pathname.match(/\/l\/([^/]+)/);
+    if (match) return decodeURIComponent(match[1]);
   } catch {
-    // not a URL - fall through to treating it as a raw code/id below
+    // not a URL - fall through to treating it as a raw code below
   }
   return null;
 }
@@ -65,14 +67,7 @@ export function IntakeWizard() {
   }
 
   function handleLocationScanned(text: string) {
-    const id = extractLocationId(text);
-    if (id) {
-      setLocationCode("");
-      setLocation({ id, name: "", code: "", description: null, parentLocationId: null, createdBy: null, createdAt: "" });
-      setStep("confirm");
-    } else {
-      setLocationCode(text);
-    }
+    setLocationCode(extractLocationCode(text) ?? text);
   }
 
   useEffect(() => {
