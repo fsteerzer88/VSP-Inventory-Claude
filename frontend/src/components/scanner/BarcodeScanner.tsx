@@ -32,7 +32,16 @@ export function BarcodeScanner({ formats, onDetected, active = true, className }
 
     reader
       .decodeFromConstraints(
-        { video: { facingMode: { ideal: "environment" } } },
+        {
+          video: {
+            facingMode: { ideal: "environment" },
+            // Small printed QR labels (see qrcode.service.ts) need enough resolution to
+            // resolve their fine modules - browsers otherwise default to ~640x480, which is
+            // fine for large 1D barcodes but too coarse for a small QR at normal distance.
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+        },
         videoRef.current,
         (result, err) => {
           if (cancelled) return;
