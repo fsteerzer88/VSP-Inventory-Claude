@@ -52,6 +52,7 @@ export function IntakeWizard() {
   const [ocrWords, setOcrWords] = useState<DetectedWord[]>([]);
   const [ocrStatus, setOcrStatus] = useState<"idle" | "scanning" | "done" | "error">("idle");
   const [ocrError, setOcrError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const existingProduct = useProductByBarcode(barcode || undefined);
   const uploadImage = useUploadProductImage();
@@ -99,6 +100,8 @@ export function IntakeWizard() {
   }
 
   async function handleSubmit() {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setError(null);
     try {
       let result;
@@ -129,6 +132,8 @@ export function IntakeWizard() {
       setStep("done");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Intake failed");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -391,8 +396,8 @@ export function IntakeWizard() {
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex gap-2">
-              <Button onClick={handleSubmit} disabled={intake.isPending || quantity < 1}>
-                {intake.isPending ? "Saving..." : "Confirm intake"}
+              <Button onClick={handleSubmit} disabled={isSubmitting || quantity < 1}>
+                {isSubmitting ? "Saving..." : "Confirm intake"}
               </Button>
               <Button variant="outline" onClick={() => setStep("scan-location")}>
                 Back
