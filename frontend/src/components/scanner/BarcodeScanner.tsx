@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
-import { BarcodeFormat, DecodeHintType, NotFoundException } from "@zxing/library";
+import { BrowserMultiFormatReader, HTMLCanvasElementLuminanceSource, type IScannerControls } from "@zxing/browser";
+import {
+  BarcodeFormat,
+  BinaryBitmap,
+  ChecksumException,
+  DecodeHintType,
+  FormatException,
+  HybridBinarizer,
+  MultiFormatReader,
+  NotFoundException,
+} from "@zxing/library";
 import { AlertCircle } from "lucide-react";
 
 interface BarcodeScannerProps {
@@ -30,6 +39,45 @@ export function BarcodeScanner({ formats, onDetected, active = true, className }
     let lastValue = "";
     let lastTime = 0;
 
+    function reportDetection(text: string, format: string) {
+      const now = Date.now();
+      if (text === lastValue && now - lastTime < 2000) return;
+      lastValue = text;
+      lastTime = now;
+      onDetectedRef.current(text, format);
+    }
+
+    // Some printed labels use reverse-video QR codes (light modules on a dark background,
+    // e.g. white-on-black asset tags) - zxing's HybridBinarizer assumes dark-on-light and
+    // never finds a match on these, even though a phone's native camera scanner handles them
+    // fine. Run a second, independent decode pass against an inverted copy of each frame so
+    // those labels still auto-scan instead of requiring a manual code entry.
+    const invertedReader = new MultiFormatReader();
+    invertedReader.setHints(hints);
+    const invertCanvas = document.createElement("canvas");
+    let invertTimer: ReturnType<typeof setInterval> | undefined;
+
+    function tryInvertedDecode() {
+      const video = videoRef.current;
+      if (!video || video.readyState < video.HAVE_CURRENT_DATA || !video.videoWidth || !video.videoHeight) return;
+      invertCanvas.width = video.videoWidth;
+      invertCanvas.height = video.videoHeight;
+      const ctx = invertCanvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, invertCanvas.width, invertCanvas.height);
+      try {
+        const luminanceSource = new HTMLCanvasElementLuminanceSource(invertCanvas).invert();
+        const bitmap = new BinaryBitmap(new HybridBinarizer(luminanceSource));
+        const result = invertedReader.decodeWithState(bitmap);
+        reportDetection(result.getText(), result.getBarcodeFormat().toString());
+      } catch (err) {
+        if (!(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
+          console.error("BarcodeScanner: inverted decode error", err);
+        }
+      }
+    }
+    invertTimer = setInterval(tryInvertedDecode, 400);
+
     reader
       .decodeFromConstraints(
         {
@@ -46,12 +94,7 @@ export function BarcodeScanner({ formats, onDetected, active = true, className }
         (result, err) => {
           if (cancelled) return;
           if (result) {
-            const text = result.getText();
-            const now = Date.now();
-            if (text === lastValue && now - lastTime < 2000) return;
-            lastValue = text;
-            lastTime = now;
-            onDetectedRef.current(text, result.getBarcodeFormat().toString());
+            reportDetection(result.getText(), result.getBarcodeFormat().toString());
             return;
           }
           if (err && !(err instanceof NotFoundException)) {
@@ -73,6 +116,7 @@ export function BarcodeScanner({ formats, onDetected, active = true, className }
     return () => {
       cancelled = true;
       controls?.stop();
+      clearInterval(invertTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, formatsKey]);
