@@ -373,7 +373,11 @@ export function IntakeWizard() {
               Product: <span className="font-medium">{existingProduct.data?.name ?? name}</span>
             </p>
             <p className="text-sm">
-              Location: <span className="font-medium">{location.name || location.id}</span>
+              Location:{" "}
+              <span className="font-medium">
+                {location.fullCode ?? location.code}
+                {location.name ? ` - ${location.name}` : ""}
+              </span>
             </p>
             <div className="flex flex-col gap-2">
               <Label htmlFor="quantity">Quantity</Label>
